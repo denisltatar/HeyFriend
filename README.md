@@ -120,18 +120,3 @@ Success will be measured by:
 
 ---
 
-## 🤝 Contributing
-
-Pull requests and feature ideas are welcome!  
-Please open an issue to discuss proposed changes before submitting PRs.
-
----
-
-## 📜 License
-
-MIT License. See `LICENSE` for details.
-
----
-
-**Created by:** Denis Tatar & Jamie Sirbu
-
