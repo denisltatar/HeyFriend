@@ -17,6 +17,20 @@ struct ChatView: View {
                 Text(viewModel.transcribedText)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if !viewModel.aiResponse.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Divider()
+                        Text("HeyFriend says:")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text(viewModel.aiResponse)
+                            .font(.body)
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
+
             }
 
             Button(action: {

@@ -13,6 +13,8 @@ import Speech
 class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var transcribedText: String = ""
     @Published var isRecording = false
+    @Published var aiResponse: String = ""
+
 
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
     private let audioEngine = AVAudioEngine()
@@ -68,6 +70,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
             if error != nil || (result?.isFinal ?? false) {
                 self.stopRecording()
+                self.handleFinishedTranscription()
             }
         }
 
@@ -89,4 +92,15 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         recognitionTask = nil
         isRecording = false
     }
+    
+    func handleFinishedTranscription() {
+        print("🎯 Calling ChatService with: \(transcribedText)")
+        let message = transcribedText
+        ChatService.shared.sendMessage(message) { response in
+            DispatchQueue.main.async {
+                self.aiResponse = response ?? "Hmm… I didn’t quite catch that."
+            }
+        }
+    }
+
 }

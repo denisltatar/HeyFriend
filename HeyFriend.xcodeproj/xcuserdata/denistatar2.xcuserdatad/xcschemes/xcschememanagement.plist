@@ -4,10 +4,28 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>HeyFriend.xcscheme_^#shared#^_</key>
+		<key>HeyFriend.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>7E4617662E46925F00EFAA01</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E4617762E46926100EFAA01</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>7E4617802E46926100EFAA01</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

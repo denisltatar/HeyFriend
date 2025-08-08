@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+build/
+*.xcworkspace
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcscmblueprint
+
+# Schemes (don’t share env vars)
+*.xcodeproj/xcshareddata/
+*.xcodeproj/xcshareddata/xcschemes/
+*.xcscheme
+
+# Env files
+.env
+
