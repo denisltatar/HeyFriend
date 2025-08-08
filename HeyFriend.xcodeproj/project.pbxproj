@@ -18,6 +18,7 @@
 		7E4617992E4697B800EFAA01 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4617982E4697B800EFAA01 /* ChatViewModel.swift */; };
 		7E46179C2E4697D500EFAA01 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E46179B2E4697D500EFAA01 /* TranscriptionService.swift */; };
 		7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E46179E2E469E6900EFAA01 /* ChatService.swift */; };
+		7E4617A12E46B4A000EFAA01 /* TextToSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +54,7 @@
 		7E46179B2E4697D500EFAA01 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		7E46179D2E4698C000EFAA01 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7E46179E2E469E6900EFAA01 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextToSpeechService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -161,6 +163,7 @@
 			children = (
 				7E46179B2E4697D500EFAA01 /* TranscriptionService.swift */,
 				7E46179E2E469E6900EFAA01 /* ChatService.swift */,
+				7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -301,6 +304,7 @@
 				7E46179C2E4697D500EFAA01 /* TranscriptionService.swift in Sources */,
 				7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */,
 				7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */,
+				7E4617A12E46B4A000EFAA01 /* TextToSpeechService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

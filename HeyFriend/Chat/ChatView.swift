@@ -10,6 +10,7 @@ import SwiftUI
 
 struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
+    @State private var voiceRepliesOn = true
 
     var body: some View {
         VStack(spacing: 20) {

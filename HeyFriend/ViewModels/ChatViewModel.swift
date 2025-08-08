@@ -99,6 +99,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         ChatService.shared.sendMessage(message) { response in
             DispatchQueue.main.async {
                 self.aiResponse = response ?? "Hmm… I didn’t quite catch that."
+                TextToSpeechService.shared.speak(self.aiResponse)
             }
         }
     }

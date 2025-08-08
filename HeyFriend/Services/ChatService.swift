@@ -28,7 +28,7 @@ class ChatService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
-            "model": "gpt-4", // You can use "gpt-3.5-turbo" if you don’t have GPT-4 access
+            "model": "gpt-4o", // You can use "gpt-3.5-turbo" if you don’t have GPT-4 access
             "messages": [
                 ["role": "system", "content": "You are a supportive friend trained in emotional reflection."],
                 ["role": "user", "content": message]
