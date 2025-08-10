@@ -6,64 +6,59 @@
 //
 
 import Foundation
-import Foundation
 
-class ChatService {
+final class ChatService {
     static let shared = ChatService()
 
-    func sendMessage(_ message: String, completion: @escaping (String?) -> Void) {
-        // 🔑 Debug: Check if API key is found
-        print("🔑 Found API Key: \(ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "nil")")
-        guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
-            print("❌ Missing API Key")
-            completion(nil)
+    private(set) var messages: [[String: String]] = [
+        ["role": "system", "content": "You are a supportive, concise conversational partner. Acknowledge feelings, ask brief clarifying questions when useful, and keep responses under ~120 words unless asked for more."]
+    ]
+
+    func reset() {
+        messages = [
+            ["role": "system", "content": "You are a supportive, concise conversational partner. Acknowledge feelings, ask brief clarifying questions when useful, and keep responses under ~120 words unless asked for more."]
+        ]
+    }
+
+    func sendMessage(_ user: String, completion: @escaping (String?) -> Void) {
+        guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !apiKey.isEmpty else {
+            completion("I’m missing my API key on this device.")
             return
         }
 
+        messages.append(["role": "user", "content": user])
 
-        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var req = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
-            "model": "gpt-4o", // You can use "gpt-3.5-turbo" if you don’t have GPT-4 access
-            "messages": [
-                ["role": "system", "content": "You are a supportive friend trained in emotional reflection."],
-                ["role": "user", "content": message]
-            ],
+            "model": "gpt-4o",
+            "messages": messages,
             "temperature": 0.7
         ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            // ❌ Debug: Catch network error
+        URLSession.shared.dataTask(with: req) { data, _, error in
             if let error = error {
-                print("❌ Network error: \(error.localizedDescription)")
-                completion("Sorry, I didn’t catch that. Can you try again?")
+                completion("Network error: \(error.localizedDescription)")
                 return
             }
-
-            // 🧠 Debug: Show raw GPT response
-            if let data = data {
-                print("🧠 GPT raw response: \(String(data: data, encoding: .utf8) ?? "No response body")")
-            }
-            
             guard
-                let data = data,
-                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                 let choices = json["choices"] as? [[String: Any]],
-                let firstChoice = choices.first,
-                let message = firstChoice["message"] as? [String: Any],
-                let content = message["content"] as? String
+                let msg = choices.first?["message"] as? [String: Any],
+                let content = msg["content"] as? String
             else {
-                completion("Sorry, I didn’t catch that. Can you try again?")
+                completion("Sorry, I didn’t catch that.")
                 return
             }
 
-            completion(content.trimmingCharacters(in: .whitespacesAndNewlines))
-        }.resume()
+            let reply = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.messages.append(["role": "assistant", "content": reply])
+            completion(reply)
+        }
+        .resume()
     }
 }
