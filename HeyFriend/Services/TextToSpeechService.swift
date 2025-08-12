@@ -21,13 +21,10 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate {
     override init() {
         super.init()
         synth.delegate = self
+        synth.usesApplicationAudioSession = true
     }
 
     func speak(_ text: String) {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-        try? session.setActive(true, options: .notifyOthersOnDeactivation)
-
         let u = AVSpeechUtterance(string: text)
         u.voice = bestNaturalEnglishVoice()
         u.rate = 0.45
@@ -40,9 +37,6 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate {
 
     func stop() {
         synth.stopSpeaking(at: .immediate)
-        isSpeaking = false
-        NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     // MARK: Delegate
@@ -53,12 +47,10 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish _: AVSpeechUtterance) {
         isSpeaking = false
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
     func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel _: AVSpeechUtterance) {
         isSpeaking = false
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private func bestNaturalEnglishVoice() -> AVSpeechSynthesisVoice? {

@@ -13,6 +13,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var transcribedText: String = ""
     @Published var isRecording = false
     @Published var aiResponse: String = ""
+    private var suspendAutoRestart = false
 
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
     private let audioEngine = AVAudioEngine()
@@ -23,15 +24,19 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private var utteranceBuffer: String = ""
     private var lastVoiceTime: TimeInterval = 0
     private var silenceTimer: Timer?
-    private let silenceHold: TimeInterval = 0.7     // commit after ~700ms of silence
-    private let vadAmplitudeGate: Float = 0.010     // energy threshold for “speaking”
+    private let silenceHold: TimeInterval = 0.9     // commit after ~900ms of silence
+    private let vadAmplitudeGate: Float = 0.013     // energy threshold for “speaking”
     private let minUtteranceChars = 2               // avoid committing “um”
+    private var resumeGuardUntil: TimeInterval = 0
+    
 
     override init() {
         super.init()
         speechRecognizer.delegate = self
         requestPermissions()
 
+        NotificationCenter.default.addObserver(self, selector: #selector(onTTSStart),
+                                               name: .ttsDidStart, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onTTSFinish),
                                                name: .ttsDidFinish, object: nil)
     }
@@ -39,6 +44,8 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     deinit {
         NotificationCenter.default.removeObserver(self)
         silenceTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self, name: .ttsDidStart, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .ttsDidFinish, object: nil)
     }
 
     func requestPermissions() {
@@ -67,7 +74,8 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
         // Use play&record for smooth handoff with TTS
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playAndRecord, mode: .measurement,
+        try? session.setCategory(.playAndRecord,
+                                 mode: .voiceChat,
                                  options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
         try? session.setActive(true, options: .notifyOthersOnDeactivation)
 
@@ -79,7 +87,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
     func stopSession() {
         isRecording = false
-        stopRecognition()
+        stopRecognition(.userStop)
         silenceTimer?.invalidate()
         TextToSpeechService.shared.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -122,26 +130,30 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         try? audioEngine.start()
     }
 
-    private func stopRecognition() {
-        if audioEngine.isRunning {
-            audioEngine.stop()
-        }
+    private enum StopReason { case forTTS, userStop, transient }
+    private func stopRecognition(_ reason: StopReason = .transient) {
+        if audioEngine.isRunning { audioEngine.stop() }
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
+
+        // Only suspend auto-restart when we *intentionally* pause for TTS
+        suspendAutoRestart = (reason == .forTTS)
     }
 
     private func restartRecognitionSoon() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             guard self.isRecording else { return }
+            guard !self.suspendAutoRestart else { return }
             self.startRecognition()
         }
     }
 
     // MARK: - Voice Activity Detection (RMS)
     private func detectVoice(in buffer: AVAudioPCMBuffer) {
+        if Date().timeIntervalSince1970 < resumeGuardUntil { return }
         guard let ch = buffer.floatChannelData?.pointee else { return }
         let n = Int(buffer.frameLength)
         if n == 0 { return }
@@ -177,7 +189,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         guard !userTurn.isEmpty else { return }
 
         // Stop current recognition to avoid cross-talk with TTS
-        stopRecognition()
+        stopRecognition(.forTTS)
 
         ChatService.shared.sendMessage(userTurn) { reply in
             DispatchQueue.main.async {
@@ -191,11 +203,26 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         utteranceBuffer = ""
         lastVoiceTime = Date().timeIntervalSince1970
     }
+    
+    @objc private func onTTSStart() {
+        // Pause/stop recognition so the bot doesn't hear itself
+        stopRecognition(.forTTS)
+    }
 
     @objc private func onTTSFinish() {
         // Resume listening for the next turn
         guard isRecording else { return }
-        startRecognition()
-        lastVoiceTime = Date().timeIntervalSince1970
+        utteranceBuffer = ""
+        transcribedText = ""
+        
+        // lift the restart block and add a tiny guard delay
+        suspendAutoRestart = false
+        resumeGuardUntil = Date().timeIntervalSince1970 + 0.25
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            guard self.isRecording else { return }
+            self.startRecognition()
+            self.lastVoiceTime = Date().timeIntervalSince1970
+        }
     }
 }
