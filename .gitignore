@@ -19,3 +19,8 @@ xcuserdata/
 # Env files
 .env
 
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
