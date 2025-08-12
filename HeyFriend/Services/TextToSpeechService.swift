@@ -8,51 +8,60 @@
 import Foundation
 import AVFoundation
 
-final class TextToSpeechService: NSObject {
+extension Notification.Name {
+    static let ttsDidStart  = Notification.Name("ttsDidStart")
+    static let ttsDidFinish = Notification.Name("ttsDidFinish")
+}
+
+final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate {
     static let shared = TextToSpeechService()
     private let synth = AVSpeechSynthesizer()
+    private(set) var isSpeaking = false
+
+    override init() {
+        super.init()
+        synth.delegate = self
+        synth.usesApplicationAudioSession = true
+    }
 
     func speak(_ text: String) {
-        // smoother audio handoff
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-        try? session.setActive(true, options: .notifyOthersOnDeactivation)
+        let u = AVSpeechUtterance(string: text)
+        u.voice = bestNaturalEnglishVoice()
+        u.rate = 0.45
+        u.pitchMultiplier = 1.05
+        u.postUtteranceDelay = 0.05
+        u.prefersAssistiveTechnologySettings = true
 
-        let utterance = AVSpeechUtterance(string: text)
-
-        // pick best available English voice (prefers Enhanced/Siri)
-        utterance.voice = bestNaturalEnglishVoice()
-
-        // slower + slightly higher pitch sounds more human
-        utterance.rate = 0.45            // 0.0–1.0; default ~0.5. Try 0.42–0.52
-        utterance.pitchMultiplier = 1.05 // 0.5–2.0
-        utterance.postUtteranceDelay = 0.05
-
-        // respect user’s Spoken Content settings if enabled
-        utterance.prefersAssistiveTechnologySettings = true
-
-        synth.speak(utterance)
+        synth.speak(u)
     }
 
     func stop() {
         synth.stopSpeaking(at: .immediate)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    // MARK: Delegate
+    func speechSynthesizer(_ s: AVSpeechSynthesizer, didStart _: AVSpeechUtterance) {
+        isSpeaking = true
+        NotificationCenter.default.post(name: .ttsDidStart, object: nil)
+    }
+    func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish _: AVSpeechUtterance) {
+        isSpeaking = false
+        NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
+    }
+    func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel _: AVSpeechUtterance) {
+        isSpeaking = false
+        NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
     }
 
     private func bestNaturalEnglishVoice() -> AVSpeechSynthesisVoice? {
-        // 1) Prefer Enhanced/Siri voices, else fall back to any en-* voice
-        let voices = AVSpeechSynthesisVoice.speechVoices()
-        let english = voices.filter { $0.language.hasPrefix("en") }
-
-        // Prefer higher quality first (Enhanced > Default), then Siri name if present
-        let sorted = english.sorted {
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") }
+        let sorted = voices.sorted {
             if $0.quality != $1.quality { return $0.quality.rawValue > $1.quality.rawValue }
-            let aIsSiri = $0.name.localizedCaseInsensitiveContains("siri")
-            let bIsSiri = $1.name.localizedCaseInsensitiveContains("siri")
-            if aIsSiri != bIsSiri { return aIsSiri } // Siri first
+            let aSiri = $0.name.localizedCaseInsensitiveContains("siri")
+            let bSiri = $1.name.localizedCaseInsensitiveContains("siri")
+            if aSiri != bSiri { return aSiri }
             return $0.name < $1.name
         }
-
         return sorted.first ?? AVSpeechSynthesisVoice(language: "en-US")
     }
 }
