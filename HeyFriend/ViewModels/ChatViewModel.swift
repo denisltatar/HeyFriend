@@ -13,7 +13,6 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var transcribedText: String = ""
     @Published var isRecording = false
     @Published var aiResponse: String = ""
-    private var suspendAutoRestart = false
 
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
     private let audioEngine = AVAudioEngine()
@@ -29,6 +28,16 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private let minUtteranceChars = 2               // avoid committing “um”
     private var resumeGuardUntil: TimeInterval = 0
     
+    // --- Barge-in + restart guards ---
+    private var suspendAutoRestart = false
+    private enum StopReason { case forTTS, userStop, transient }
+
+    // Barge-in monitor
+    private var bargeTapInstalled = false
+    private var bargeStartTime: CFTimeInterval = 0
+    private var bargeRequested = false
+    private var bargeRMSGate: Float { max(0.015, vadAmplitudeGate * 1.2) } // adaptive
+    private let bargeHold: TimeInterval = 0.12 // ~120ms of voice to trigger
 
     override init() {
         super.init()
@@ -39,6 +48,12 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                                                name: .ttsDidStart, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onTTSFinish),
                                                name: .ttsDidFinish, object: nil)
+        // Observers for handling interruptions
+//        NotificationCenter.default.addObserver(self, selector: #selector(handleInterruption),
+//            name: AVAudioSession.interruptionNotification, object: nil)
+//        NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange),
+//            name: AVAudioSession.routeChangeNotification, object: nil)
+
     }
 
     deinit {
@@ -91,6 +106,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         silenceTimer?.invalidate()
         TextToSpeechService.shared.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        removeBargeInTap()
     }
 
     // MARK: - Recognition wiring
@@ -130,7 +146,6 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         try? audioEngine.start()
     }
 
-    private enum StopReason { case forTTS, userStop, transient }
     private func stopRecognition(_ reason: StopReason = .transient) {
         if audioEngine.isRunning { audioEngine.stop() }
         audioEngine.inputNode.removeTap(onBus: 0)
@@ -138,9 +153,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
-
-        // Only suspend auto-restart when we *intentionally* pause for TTS
-        suspendAutoRestart = (reason == .forTTS)
+        suspendAutoRestart = (reason == .forTTS) // block auto-restart while TTS speaks
     }
 
     private func restartRecognitionSoon() {
@@ -164,6 +177,11 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
         if rms > vadAmplitudeGate {
             lastVoiceTime = Date().timeIntervalSince1970
+            if TextToSpeechService.shared.isSpeaking {
+                TextToSpeechService.shared.stop()                 // stop TTS now
+                resumeGuardUntil = Date().timeIntervalSince1970 + 0.20
+                // recognition will resume via your onTTSFinish() path
+            }
         }
     }
 
@@ -205,21 +223,111 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     }
     
     @objc private func onTTSStart() {
+        print("[barge] onTTSStart")
         // Pause/stop recognition so the bot doesn't hear itself
         stopRecognition(.forTTS)
+        
+        // start VAD-only tap to detect your voice
+        installBargeInTap()
+    }
+    
+    private func installBargeInTap() {
+        guard !bargeTapInstalled else { return }
+        let input = audioEngine.inputNode
+        let format = input.outputFormat(forBus: 0)
+
+        input.removeTap(onBus: 0) // make sure bus is clean
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            self.detectBarge(in: buffer)
+        }
+
+        audioEngine.prepare()
+        try? audioEngine.start()
+        bargeTapInstalled = true
+        bargeStartTime = 0
     }
 
+    private func removeBargeInTap() {
+        guard bargeTapInstalled else { return }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        if audioEngine.isRunning { audioEngine.stop() } // we'll restart in startRecognition()
+        bargeTapInstalled = false
+        bargeStartTime = 0
+    }
+    
+    private func detectBarge(in buffer: AVAudioPCMBuffer) {
+        // Only meaningful if TTS is speaking
+        guard TextToSpeechService.shared.isSpeaking else { return }
+        guard let ch = buffer.floatChannelData?.pointee else { return }
+        let n = Int(buffer.frameLength)
+        if n == 0 { return }
+
+        var sum: Float = 0
+        for i in 0..<n { sum += ch[i] * ch[i] }
+        let rms = sqrt(sum / Float(n))
+
+        let now = CFAbsoluteTimeGetCurrent()
+        // Log only when above gate to avoid spam
+        if rms > bargeRMSGate {
+            if bargeStartTime == 0 {
+                bargeStartTime = CFAbsoluteTimeGetCurrent()
+                print(String(format: "[barge] rms=%.4f > gate=%.4f — start hold", rms, bargeRMSGate))
+            } else if CFAbsoluteTimeGetCurrent() - bargeStartTime > bargeHold {
+                print("[barge] stop TTS (hold met)")
+                bargeRequested = true
+                TextToSpeechService.shared.stop() // will trigger .ttsDidFinish
+                bargeStartTime = CFAbsoluteTimeGetCurrent()
+            }
+        } else if bargeStartTime != 0 {
+            print("[barge] rms fell below gate — reset")
+            bargeStartTime = 0
+        }
+    }
+    
+//    @objc private func handleInterruption(_ note: Notification) {
+//        guard let info = note.userInfo,
+//              let typeRaw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+//              let type = AVAudioSession.InterruptionType(rawValue: typeRaw) else { return }
+//
+//        switch type {
+//        case .began:
+//            stopRecognition(.transient)
+//            removeBargeInTap()
+//        case .ended:
+//            // resume only if we were in-session
+//            guard isRecording else { return }
+//            try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+//            startRecognition()
+//        @unknown default: break
+//        }
+//    }
+//
+//    @objc private func handleRouteChange(_ note: Notification) {
+//        // If route flips to an output-only profile (e.g., A2DP), rebuild engine
+//        guard isRecording else { return }
+//        removeBargeInTap()
+//        stopRecognition(.transient)
+//        startRecognition()
+//    }
+
+
+
     @objc private func onTTSFinish() {
+        print("[barge] onTTSFinish (bargeRequested=\(bargeRequested))")
+        removeBargeInTap()
         // Resume listening for the next turn
         guard isRecording else { return }
+        
         utteranceBuffer = ""
         transcribedText = ""
         
-        // lift the restart block and add a tiny guard delay
+        // If we stopped TTS because user started speaking, resume faster
+        let delay: TimeInterval = bargeRequested ? 0.05 : 0.25
+        resumeGuardUntil = Date().timeIntervalSince1970 + delay
+        bargeRequested = false
         suspendAutoRestart = false
-        resumeGuardUntil = Date().timeIntervalSince1970 + 0.25
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             guard self.isRecording else { return }
             self.startRecognition()
             self.lastVoiceTime = Date().timeIntervalSince1970
