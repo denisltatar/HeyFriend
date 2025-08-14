@@ -132,12 +132,12 @@
 		7E4617692E46925F00EFAA01 /* HeyFriend */ = {
 			isa = PBXGroup;
 			children = (
-				7E2E49142E4E4BBD0021AA2C /* Orb */,
 				7E46179D2E4698C000EFAA01 /* Info.plist */,
 				7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */,
 				7E46176C2E46925F00EFAA01 /* ContentView.swift */,
+				7E4617712E46926100EFAA01 /* Preview Assets.xcassets */,
 				7E4617702E46926100EFAA01 /* Preview Content */,
-				7E46176E2E46926100EFAA01 /* Assets.xcassets */,
+				7E2E49142E4E4BBD0021AA2C /* Orb */,
 				7E4617942E46976B00EFAA01 /* Chat */,
 				7E46179A2E4697C300EFAA01 /* Services */,
 				7E4617972E4697A700EFAA01 /* ViewModels */,
@@ -148,7 +148,7 @@
 		7E4617702E46926100EFAA01 /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
-				7E4617712E46926100EFAA01 /* Preview Assets.xcassets */,
+				7E46176E2E46926100EFAA01 /* Assets.xcassets */,
 			);
 			path = "Preview Content";
 			sourceTree = "<group>";

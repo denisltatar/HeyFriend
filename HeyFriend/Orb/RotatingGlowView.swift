@@ -22,6 +22,7 @@ enum RotationDirection {
 
 struct RotatingGlowView: View {
     @State private var rotation: Double = 0
+    @State private var lastSpeed: Double = 30
 
     private let color: Color
     private let rotationSpeed: Double
@@ -56,7 +57,12 @@ struct RotatingGlowView: View {
                 }
                 .rotationEffect(.degrees(rotation))
                 .onAppear { startSpin() }
-                .onChange(of: rotationSpeed) { _, _ in restartSpin() }
+                .onChange(of: rotationSpeed) { new in
+                    let rel = abs(new - lastSpeed) / max(lastSpeed, 1)
+                    guard rel > 0.08 else { return }   // only restart if >8% change
+                    lastSpeed = new
+                    restartSpin()
+                }
                 .onChange(of: direction.multiplier) { _, _ in restartSpin() } // reacts if you flip direction
         }
     }
