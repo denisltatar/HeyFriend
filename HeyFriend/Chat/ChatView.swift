@@ -16,15 +16,14 @@ struct ChatView: View {
         ZStack {
             // Brand canvas background (soft, warm)
             HF.canvas.ignoresSafeArea()
-            
-            // Adaptive system background
-            Color(.systemBackground)
-                .ignoresSafeArea()
+
 
             VStack(spacing: 12) {
                 
                 // ORB — matches the website
-                OrbView(state: orbState).padding(.top, 8)
+//                OrbView(state: orbState).padding(.top, 8)
+//                SwirlOrbView().padding(.top, 8)
+                LiquidSwirlOrbView(mode: .listening).padding(.top, 8)
 
                 // Conversation
                 ScrollView(showsIndicators: false) {
@@ -77,19 +76,11 @@ struct ChatView: View {
     }
     
     // Map VM → Orb state
-    private var orbState: OrbView.OrbPhase {
-        if !viewModel.isRecording { return .paused }
-        if viewModel.isTTSSpeaking { return .aiSpeaking }
-        // simple heuristic: if we have text but TTS hasn't started yet, "thinking"
-        if !viewModel.transcribedText.isEmpty && viewModel.aiResponse.isEmpty {
-            // while user is talking, feed amplitude‑based animation
-            let lvl = viewModel.rmsLevel
-            if lvl > 0.05 { return .userSpeaking(level: lvl) }
-            return .listening
-        }
-        // idle/listening between turns
-        return .listening
-    }
+//    private var orbState: OrbView.OrbPhase {
+//        if !viewModel.isRecording { return .listening } // or .responding if you want idle to look same
+//            if viewModel.isTTSSpeaking { return .responding }
+//            return .listening
+//    }
 }
 
 
@@ -206,7 +197,7 @@ private struct BrandMicControl: View {
                 // Core button
                 Circle()
                     .fill(HF.amber) // brand fill
-                    .frame(width: 112, height: 112)
+                    .frame(width: 95, height: 95)
                     .overlay(
                         Circle().stroke(HF.amberMid.opacity(0.6), lineWidth: 2)
                     )

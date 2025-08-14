@@ -9,113 +9,89 @@ import Foundation
 import SwiftUI
 
 struct OrbView: View {
-    enum OrbPhase {
-        case idle
-        case listening                // mic on, no amplitude
-        case userSpeaking(level: CGFloat) // level 0...1
-        case thinking                 // after user finishes, before TTS
-        case aiSpeaking               // during TTS playback
-        case paused
+    enum OrbPhase: Equatable {
+        case listening
+        case responding
     }
 
     var state: OrbPhase
 
-    // Visual tokens
-    private let core = HF.amber
-    private let haloMid = HF.amberMid
-    private let haloOuter = HF.amberSoft
-
-    @State private var baseScale: CGFloat = 1
-    @State private var yHover: CGFloat = 0
-    @State private var rotation: Angle = .degrees(0)
-
+    // Appearance
+    private let gradientColors = [
+        Color(red: 0.85, green: 0.84, blue: 0.97), // soft lavender
+        Color(red: 0.80, green: 0.88, blue: 0.98)  // pale blue
+    ]
+    
+    @State private var time: Double = 0
+    @State private var rippleScale: CGFloat = 0.95
+    @State private var rippleOpacity: Double = 0.0
+    
     var body: some View {
         ZStack {
-            // Outer ambient halo
+            // Outer halo
             Circle()
-                .fill(radialHalo)
-                .scaleEffect(haloScale)
-                .opacity(haloOpacity)
-                .blur(radius: 22)
-                .blendMode(.plusLighter)
-
-            // Core orb with subtle light sweep
+                .fill(RadialGradient(colors: [gradientColors[1].opacity(0.2), .clear],
+                                     center: .center, startRadius: 0, endRadius: 140))
+                .blur(radius: 12)
+                .opacity(0.03 + 0.02 * sin(time * 0.5)) // subtle breathing
+            
+            // Orb body
             Circle()
-                .fill(coreGradient)
-                .overlay(lightSweep.mask(Circle()))
-                .scaleEffect(coreScale)
-                .shadow(color: haloOuter.opacity(0.25), radius: 40, x: 0, y: 12)
+                .fill(RadialGradient(colors: gradientColors,
+                                     center: .center, startRadius: 0, endRadius: 88))
+                .overlay(
+                    // Internal swirling particles
+                    Canvas { context, size in
+                        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                        let particleCount = 8
+                        let swirlRadius: CGFloat = size.width * 0.35
+                        let speedMultiplier = (state == .responding) ? 1.5 : 1.0
+                        
+                        for i in 0..<particleCount {
+                            let angle = time * 0.15 * speedMultiplier + Double(i) * (Double.pi * 2 / Double(particleCount))
+                            let x = center.x + swirlRadius * cos(angle)
+                            let y = center.y + swirlRadius * sin(angle)
+                            let particleRect = CGRect(x: x - 4, y: y - 4, width: 8, height: 8)
+                            
+                            context.fill(Path(ellipseIn: particleRect),
+                                         with: .color(.white.opacity(0.08)))
+                        }
+                    }
+                )
+                .overlay(
+                    // Gentle ripple for responding state
+                    Circle()
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
+                        .scaleEffect(rippleScale)
+                        .opacity(rippleOpacity)
+                )
         }
-        .frame(width: 220, height: 220)
-        .offset(y: yHover)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
-                baseScale = 1.02
-            }
-            withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
-                yHover = 2
-            }
-            withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
-                rotation = .degrees(360)
-            }
-        }
+        .frame(width: 176, height: 176) // ~20% smaller
+        .onAppear { startAnimations() }
+        .onChange(of: state) { _ in handleStateChange() }
     }
-
-    // MARK: - Drawing
-
-    private var coreScale: CGFloat {
+    
+    private func startAnimations() {
+        withAnimation(.linear(duration: 0.016).repeatForever(autoreverses: false)) {
+            time += 1
+        }
+        handleStateChange()
+    }
+    
+    private func handleStateChange() {
         switch state {
-        case .idle: return baseScale
-        case .listening: return baseScale * 1.01
-        case .userSpeaking(let lvl): return baseScale * (1.0 + 0.03 * min(lvl, 1))
-        case .thinking: return baseScale * 1.0
-        case .aiSpeaking: return baseScale * 1.04
-        case .paused: return baseScale
+        case .listening:
+            withAnimation(.easeInOut(duration: 0.4)) {
+                rippleOpacity = 0.0
+            }
+        case .responding:
+            withAnimation(.easeInOut(duration: 0.4)) {
+                rippleOpacity = 1.0
+            }
+            // ripple pulse
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                rippleScale = 1.1
+            }
         }
-    }
-
-    private var haloScale: CGFloat {
-        switch state {
-        case .userSpeaking(let lvl): return 1.2 + 0.2 * min(lvl, 1)
-        case .aiSpeaking: return 1.25
-        case .listening: return 1.15
-        case .thinking: return 1.1
-        case .idle: return 1.1
-        case .paused: return 1.05
-        }
-    }
-
-    private var haloOpacity: Double {
-        switch state {
-        case .paused: return 0.10
-        case .thinking: return 0.18
-        case .idle: return 0.20
-        case .listening: return 0.25
-        case .userSpeaking(let lvl): return 0.20 + 0.15 * Double(min(lvl, 1))
-        case .aiSpeaking: return 0.28
-        }
-    }
-
-    private var radialHalo: RadialGradient {
-        RadialGradient(colors: [haloMid, haloOuter.opacity(0.0)],
-                       center: .center, startRadius: 10, endRadius: 170)
-    }
-
-    private var coreGradient: RadialGradient {
-        RadialGradient(colors: [core, core.opacity(0.7)],
-                       center: .center, startRadius: 0, endRadius: 110)
-    }
-
-    private var lightSweep: some View {
-        AngularGradient(
-            gradient: Gradient(stops: [
-                .init(color: .white.opacity(0.0),  location: 0.00),
-                .init(color: .white.opacity(0.35), location: 0.08),
-                .init(color: .white.opacity(0.0),  location: 0.16),
-                .init(color: .white.opacity(0.0),  location: 1.00),
-            ]),
-            center: .center,
-            angle: rotation
-        )
     }
 }

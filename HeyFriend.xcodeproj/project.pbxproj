@@ -21,6 +21,7 @@
 		7E4617A12E46B4A000EFAA01 /* TextToSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */; };
 		7E73B90F2E4D7043001BB81E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E73B90E2E4D7043001BB81E /* Theme.swift */; };
 		7E73B9112E4D7054001BB81E /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E73B9102E4D7054001BB81E /* OrbView.swift */; };
+		7E73B9152E4D8971001BB81E /* LiquidSwirlOrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E73B9142E4D8971001BB81E /* LiquidSwirlOrbView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 		7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextToSpeechService.swift; sourceTree = "<group>"; };
 		7E73B90E2E4D7043001BB81E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		7E73B9102E4D7054001BB81E /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
+		7E73B9142E4D8971001BB81E /* LiquidSwirlOrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidSwirlOrbView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +154,7 @@
 				7E4617952E46979D00EFAA01 /* ChatView.swift */,
 				7E73B90E2E4D7043001BB81E /* Theme.swift */,
 				7E73B9102E4D7054001BB81E /* OrbView.swift */,
+				7E73B9142E4D8971001BB81E /* LiquidSwirlOrbView.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -309,6 +312,7 @@
 				7E73B9112E4D7054001BB81E /* OrbView.swift in Sources */,
 				7E4617962E46979D00EFAA01 /* ChatView.swift in Sources */,
 				7E4617992E4697B800EFAA01 /* ChatViewModel.swift in Sources */,
+				7E73B9152E4D8971001BB81E /* LiquidSwirlOrbView.swift in Sources */,
 				7E46179C2E4697D500EFAA01 /* TranscriptionService.swift in Sources */,
 				7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */,
 				7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */,
