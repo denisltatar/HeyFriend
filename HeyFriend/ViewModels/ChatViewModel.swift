@@ -38,6 +38,10 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private var bargeRequested = false
     private var bargeRMSGate: Float { max(0.015, vadAmplitudeGate * 1.2) } // adaptive
     private let bargeHold: TimeInterval = 0.12 // ~120ms of voice to trigger
+    
+    // Orb material
+    @Published var rmsLevel: CGFloat = 0          // 0...1 for the orb
+    @Published var isTTSSpeaking: Bool = false    // mirrors TTS notifications
 
     override init() {
         super.init()
@@ -174,6 +178,11 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         var sum: Float = 0
         for i in 0..<n { sum += ch[i] * ch[i] }
         let rms = sqrt(sum / Float(n))
+        
+        // map typical mic RMS (~0.0–0.05) to 0...1 clamp
+        let normalized = max(0, min(1, (rms - 0.002) / 0.04))
+        DispatchQueue.main.async { self.rmsLevel = CGFloat(normalized) }
+
 
         if rms > vadAmplitudeGate {
             lastVoiceTime = Date().timeIntervalSince1970
@@ -223,6 +232,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     }
     
     @objc private func onTTSStart() {
+        isTTSSpeaking = true
         print("[barge] onTTSStart")
         // Pause/stop recognition so the bot doesn't hear itself
         stopRecognition(.forTTS)
@@ -313,6 +323,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
 
     @objc private func onTTSFinish() {
+        isTTSSpeaking = false
         print("[barge] onTTSFinish (bargeRequested=\(bargeRequested))")
         removeBargeInTap()
         // Resume listening for the next turn
