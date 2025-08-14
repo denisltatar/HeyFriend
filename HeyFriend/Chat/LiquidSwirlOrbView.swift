@@ -83,13 +83,23 @@ final class LiquidSwirlView: UIView {
 
         // Subtle wet highlight
         brightness.type = .radial
-        brightness.colors = [UIColor.white.withAlphaComponent(0.20).cgColor, UIColor.clear.cgColor]
+        brightness.colors = [UIColor.white.withAlphaComponent(0.08).cgColor, UIColor.clear.cgColor] // ↓ from 0.20 → 0.08
         brightness.locations = [0, 1]
-        brightness.frame = bounds
-        brightness.cornerRadius = radius
+
+        // Make the highlight smaller so it doesn't fill the core
+        brightness.frame = bounds.insetBy(dx: size * 0.08, dy: size * 0.08)
+        brightness.cornerRadius = (radius - size * 0.08)
+
+        // Offset highlight to upper‑left so brightest point isn't dead‑center
+        brightness.startPoint = CGPoint(x: 0.32, y: 0.30)
+        brightness.endPoint   = CGPoint(x: 0.50, y: 0.50)
+
+        // Use a gentler blend than screen to avoid “chalky” hotspots
+        brightness.compositingFilter = "softLightBlendMode"
+
         brightness.masksToBounds = true
-        brightness.compositingFilter = "screenBlendMode"
         layer.addSublayer(brightness)
+
 
         // Rim
         rim.frame = bounds
@@ -113,7 +123,7 @@ final class LiquidSwirlView: UIView {
         switch mode {
         case .listening:
             spinCloud(secondsPerRotation: 4.0)     // ~4s loop
-            tuneCloud(density: 1.0, alpha: 0.12)   // calmer
+            tuneCloud(density: 0.9, alpha: 0.08)   // calmer
             setBrightness(scale: 1.0)
         case .responding:
             spinCloud(secondsPerRotation: 1.6)     // ~1.6s loop
@@ -128,7 +138,7 @@ final class LiquidSwirlView: UIView {
         cloud.emitterShape = .circle
         cloud.emitterMode = .surface
         cloud.emitterPosition = CGPoint(x: rect.midX, y: rect.midY)
-        cloud.emitterSize = CGSize(width: rect.width * 0.65, height: rect.height * 0.65)
+        cloud.emitterSize = CGSize(width: rect.width * 0.78, height: rect.height * 0.78)
         cloud.renderMode = .additive
         cloud.emitterCells = [makeCloudCell(alpha: 0.12)]
     }
@@ -141,12 +151,12 @@ final class LiquidSwirlView: UIView {
     private func makeCloudCell(alpha: CGFloat) -> CAEmitterCell {
         let cell = CAEmitterCell()
         cell.contents = softDisc(diameter: 160, blur: 32)?.cgImage
-        cell.birthRate = 8
+        cell.birthRate = 5
         cell.lifetime = 8
         cell.lifetimeRange = 2
         cell.velocity = 8
         cell.velocityRange = 6
-        cell.scale = 0.35
+        cell.scale = 0.30
         cell.scaleRange = 0.10
         cell.alphaSpeed = -0.02
         cell.color = UIColor(white: 1.0, alpha: alpha).cgColor
@@ -205,3 +215,5 @@ final class LiquidSwirlView: UIView {
         return img
     }
 }
+
+
