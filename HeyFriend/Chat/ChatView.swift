@@ -17,6 +17,8 @@ struct ChatView: View {
             // Adaptive system background
             Color(.systemBackground)
                 .ignoresSafeArea()
+            
+            
 
             VStack(spacing: 12) {
                 // Top bar
@@ -36,6 +38,8 @@ struct ChatView: View {
 //                    .accessibilityLabel("Settings")
 //                }
 //                .padding(.horizontal, 4)
+                
+                LiquidSwirlOrbView(mode: .listening)
 
                 // Conversation
                 ScrollView(showsIndicators: false) {
