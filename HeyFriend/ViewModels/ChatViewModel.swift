@@ -13,6 +13,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var transcribedText: String = ""
     @Published var isRecording = false
     @Published var aiResponse: String = ""
+    @Published var isTTSSpeaking = false   // ← add if missing
 
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
     private let audioEngine = AVAudioEngine()

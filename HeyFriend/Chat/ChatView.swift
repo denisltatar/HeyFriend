@@ -39,7 +39,12 @@ struct ChatView: View {
 //                }
 //                .padding(.horizontal, 4)
                 
-                LiquidSwirlOrbView(mode: .listening)
+//                LiquidSwirlOrbView(mode: .listening)
+                LiquidSwirlOrbView(
+                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
+                    size: 176 // keep it compact
+                )
+
 
                 // Conversation
                 ScrollView(showsIndicators: false) {
@@ -63,10 +68,10 @@ struct ChatView: View {
                 }
 
                 // Mic control
-                VStack(spacing: 10) {
+                VStack(spacing: 13) {
                     MicControl(isRecording: viewModel.isRecording) {
                         viewModel.toggleRecording()
-                    }
+                    }.frame(width: 100, height: 100)
 
                     Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
                         .font(.system(.footnote, design: .rounded))
@@ -143,34 +148,46 @@ private struct MicControl: View {
 
     @State private var pulse = false
 
+    // Brand-ish warm tones — tweak if you want
+    private let amber  = Color(red: 1.00, green: 0.72, blue: 0.34)
+    private let orange = Color(red: 1.00, green: 0.45, blue: 0.00)
+    private let halo   = Color(red: 1.00, green: 0.65, blue: 0.20)
+
     var body: some View {
         Button(action: {
             action()
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }) {
             ZStack {
-                // Subtle ring
+                // Ambient ring (breathes only while recording)
                 Circle()
-                    .strokeBorder(.quaternary, lineWidth: 8)
-                    .frame(width: 132, height: 132)
+                    .stroke(halo.opacity(isRecording ? 0.45 : 0.18), lineWidth: 8)
+                    .frame(width: 100, height: 100)
                     .scaleEffect(isRecording ? (pulse ? 1.06 : 1.0) : 1.0)
                     .animation(isRecording
                                ? .easeInOut(duration: 1.0).repeatForever(autoreverses: true)
                                : .default,
                                value: pulse)
+                    .shadow(color: halo.opacity(isRecording ? 0.35 : 0.18), radius: 14, x: 0, y: 8)
 
-                // Core
+                // Core button with gradient fill
                 Circle()
-                    .fill(.thinMaterial)
-                    .frame(width: 112, height: 112)
-                    .overlay(
-                        Circle().strokeBorder(.quaternary, lineWidth: 1)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [amber, orange]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                    .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: 8)
+                    .frame(width: 84, height: 84)
+                    .overlay(
+                        Circle().stroke(amber.opacity(0.55), lineWidth: 1.5)
+                    )
+                    .shadow(color: halo.opacity(0.55), radius: 18, x: 0, y: 10)
 
                 Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.white)
             }
         }
         .buttonStyle(.plain)
@@ -179,3 +196,4 @@ private struct MicControl: View {
         .accessibilityAddTraits(.isButton)
     }
 }
+
