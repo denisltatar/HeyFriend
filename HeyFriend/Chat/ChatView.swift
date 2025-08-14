@@ -40,10 +40,12 @@ struct ChatView: View {
 //                .padding(.horizontal, 4)
                 
 //                LiquidSwirlOrbView(mode: .listening)
-                LiquidSwirlOrbView(
-                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
-                    size: 176 // keep it compact
-                )
+//                LiquidSwirlOrbView(
+//                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
+//                    size: 176 // keep it compact
+//                )
+                OrbView(configuration: orbConfig)
+                    .frame(width: 176, height: 176)
 
 
                 // Conversation
@@ -95,6 +97,70 @@ struct ChatView: View {
             }
         }
     }
+    
+    
+//    private var orbConfig: OrbConfiguration {
+//        // Base behavior from your state
+//        let isSpeaking = viewModel.isTTSSpeaking
+//        let level = Double(viewModel.rmsLevel)  // 0…1 (use 0 if you haven’t wired this yet)
+//
+//        // Feel knobs
+//        let baseSpeed = isSpeaking ? 90.0 : 55.0
+//        let speed = baseSpeed * (1 + 0.35 * level) // gently “stirs” with voice energy
+//        let core  = (isSpeaking ? 1.10 : 0.90) + 0.20 * level
+//
+//        return OrbConfiguration(
+//            backgroundColors: [
+//                Color(hue: 0.66, saturation: 0.70, brightness: 0.95), // purple
+//                Color(hue: 0.54, saturation: 0.90, brightness: 0.95), // aqua
+//                Color(hue: 0.83, saturation: 0.55, brightness: 0.98)  // pink
+//            ],
+//            glowColor: .white,
+//            coreGlowIntensity: core,
+//            showBackground: true,
+//            showWavyBlobs: true,
+//            showParticles: true,
+//            showGlowEffects: true,
+//            showShadow: true,
+//            speed: speed
+//        )
+//    }
+    
+    private var orbConfig: OrbConfiguration {
+        let isSpeaking = viewModel.isTTSSpeaking
+        let level = Double(viewModel.rmsLevel) // 0…1; use 0 if not wired yet
+
+        // Color to orb
+        let warmSunset: [Color] = [
+          Color(hue: 0.08, saturation: 0.90, brightness: 1.00), // tangerine
+          Color(hue: 0.05, saturation: 0.75, brightness: 0.98), // deep coral
+          Color(hue: 0.10, saturation: 0.55, brightness: 1.00)  // apricot
+        ]
+        let warmGlow = Color(hue: 0.10, saturation: 0.20, brightness: 1.00) // warm white
+        let warmParticles = Color(hue: 0.08, saturation: 0.85, brightness: 1.00)
+
+
+        // Feel knobs (slightly brighter core for “speaking”)
+        let baseSpeed = isSpeaking ? 90.0 : 55.0
+        let speed = baseSpeed * (1 + 0.35 * level)
+        let core  = (isSpeaking ? 1.12 : 0.92) + 0.18 * level
+
+        return OrbConfiguration(
+            backgroundColors: warmSunset,
+            glowColor: warmGlow,
+            coreGlowIntensity: core,
+            showBackground: true,
+            showWavyBlobs: true,
+            showParticles: true,
+            showGlowEffects: true,
+            showShadow: true,
+            speed: speed
+            // If your OrbConfiguration has this field; if not, ignore:
+//            particleColor: particles
+        )
+    }
+
+
 }
 
 // MARK: - Components
