@@ -11,6 +11,25 @@ import SwiftUI
 struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
     @State private var showingSettings = false
+    @State private var smoothedSpeed: Double = 48
+    @State private var lastSpokeAt: Date = .distantPast
+    @State private var quantizedSpeed: Double = 48
+
+    private var targetSpeed: Double {
+        let isSpeaking = viewModel.isTTSSpeaking
+        let rawLevel = Double(min(max(viewModel.rmsLevel, 0), 1)) // 0…1 clamp
+
+        // Only couple to level while speaking (or briefly after)
+        let recentlySpeaking = Date().timeIntervalSince(lastSpokeAt) < 0.45
+        let level = (isSpeaking || recentlySpeaking) ? rawLevel : 0.0
+
+        // Calm bases + gentle coupling
+        let base = isSpeaking ? 60.0 : 38.0
+        let coupled = base * (1 + 0.12 * level)        // ↓ small voice influence
+
+        // Hard clamp so it can’t explode
+        return min(max(coupled, 24.0), 72.0)
+    }
 
     var body: some View {
         ZStack {
@@ -40,10 +59,26 @@ struct ChatView: View {
 //                .padding(.horizontal, 4)
                 
 //                LiquidSwirlOrbView(mode: .listening)
-                LiquidSwirlOrbView(
-                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
-                    size: 176 // keep it compact
-                )
+//                LiquidSwirlOrbView(
+//                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
+//                    size: 176 // keep it compact
+//                )
+                OrbView(configuration: makeOrbConfig(speed: quantizedSpeed))
+                    .frame(width: 176, height: 176)
+                    .onAppear { smoothedSpeed = targetSpeed; quantizedSpeed = targetSpeed }
+                    .onChange(of: targetSpeed) { new in
+                        // exponential smoothing
+                        let alpha = 0.18
+                        smoothedSpeed += (new - smoothedSpeed) * alpha
+
+                        // quantize to reduce restart frequency (change only in ~6-pt steps)
+                        let step = 6.0
+                        let stepped = (smoothedSpeed / step).rounded() * step
+                        if abs(stepped - quantizedSpeed) >= 0.5 {   // tiny hysteresis
+                            quantizedSpeed = stepped
+                        }
+                    }
+                    .frame(width: 176, height: 176)
 
 
                 // Conversation
@@ -93,8 +128,118 @@ struct ChatView: View {
                 .navigationTitle("Settings")
                 .navigationBarTitleDisplayMode(.inline)
             }
+        }.onChange(of: viewModel.isTTSSpeaking) { speaking in
+            if speaking { lastSpokeAt = Date() }
         }
     }
+
+    
+    
+//    private var orbConfig: OrbConfiguration {
+//        // Base behavior from your state
+//        let isSpeaking = viewModel.isTTSSpeaking
+//        let level = Double(viewModel.rmsLevel)  // 0…1 (use 0 if you haven’t wired this yet)
+//
+//        // Feel knobs
+//        let baseSpeed = isSpeaking ? 90.0 : 55.0
+//        let speed = baseSpeed * (1 + 0.35 * level) // gently “stirs” with voice energy
+//        let core  = (isSpeaking ? 1.10 : 0.90) + 0.20 * level
+//
+//        return OrbConfiguration(
+//            backgroundColors: [
+//                Color(hue: 0.66, saturation: 0.70, brightness: 0.95), // purple
+//                Color(hue: 0.54, saturation: 0.90, brightness: 0.95), // aqua
+//                Color(hue: 0.83, saturation: 0.55, brightness: 0.98)  // pink
+//            ],
+//            glowColor: .white,
+//            coreGlowIntensity: core,
+//            showBackground: true,
+//            showWavyBlobs: true,
+//            showParticles: true,
+//            showGlowEffects: true,
+//            showShadow: true,
+//            speed: speed
+//        )
+//    }
+    
+//    private var orbConfig: OrbConfiguration {
+//        let isSpeaking = viewModel.isTTSSpeaking
+//        // 0…1 clamp (in case RMS sometimes exceeds 1.0)
+//        let level = max(0, min(1, Double(viewModel.rmsLevel)))
+//        
+//        
+//
+//        // Color to orb
+//        let warmSunset: [Color] = [
+//          Color(hue: 0.08, saturation: 0.90, brightness: 1.00), // tangerine
+//          Color(hue: 0.05, saturation: 0.75, brightness: 0.98), // deep coral
+//          Color(hue: 0.10, saturation: 0.55, brightness: 1.00)  // apricot
+//        ]
+//        let warmGlow = Color(hue: 0.10, saturation: 0.20, brightness: 1.00) // warm white
+//        let warmParticles = Color(hue: 0.08, saturation: 0.85, brightness: 1.00)
+//
+//
+//        // Feel knobs (slightly brighter core for “speaking”)
+//        // Calmer base speeds
+//        let baseSpeed = isSpeaking ? 60.0 : 38.0
+//        
+//        // Small coupling to voice + clamp absolute speed
+//        let target = baseSpeed * (1 + 0.15 * level)
+//        let speed = min(max(target, 24.0), 72.0)   // <-- hard floor/ceiling
+//        let core  = (isSpeaking ? 1.06 : 0.92) + 0.12 * level
+//
+//        return OrbConfiguration(
+//            backgroundColors: warmSunset,
+//            glowColor: warmGlow,
+//            coreGlowIntensity: core,
+//            showBackground: true,
+//            showWavyBlobs: true,
+//            showParticles: true,
+//            showGlowEffects: true,
+//            showShadow: true,
+//            speed: speed
+//            // If your OrbConfiguration has this field; if not, ignore:
+////            particleColor: particles
+//        )
+//    }
+//    
+//    // Helper inside ChatView
+//    private func orbConfigReplacingSpeed(_ speed: Double) -> OrbConfiguration {
+//        var c = orbConfig
+//        c.speed = speed
+//        return c
+//    }
+    
+    private func makeOrbConfig(speed: Double) -> OrbConfiguration {
+        let isSpeaking = viewModel.isTTSSpeaking
+        let level = Double(min(max(viewModel.rmsLevel, 0), 1))
+
+        let core = (isSpeaking ? 1.04 : 0.92) + 0.10 * level  // gentle core change
+        
+        // Color to orb
+        let warmSunset: [Color] = [
+          Color(hue: 0.08, saturation: 0.90, brightness: 1.00), // tangerine
+          Color(hue: 0.05, saturation: 0.75, brightness: 0.98), // deep coral
+          Color(hue: 0.10, saturation: 0.55, brightness: 1.00)  // apricot
+        ]
+        let warmGlow = Color(hue: 0.10, saturation: 0.20, brightness: 1.00) // warm white
+        let warmParticles = Color(hue: 0.08, saturation: 0.85, brightness: 1.00)
+
+        return OrbConfiguration(
+            backgroundColors: warmSunset,
+            glowColor: warmGlow,
+            coreGlowIntensity: core,
+            showBackground: true,
+            showWavyBlobs: true,
+            showParticles: true,
+            showGlowEffects: true,
+            showShadow: true,
+            speed: speed
+        )
+    }
+
+
+
 }
 
 // MARK: - Components

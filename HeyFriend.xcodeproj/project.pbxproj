@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7E2E49162E4E4BCD0021AA2C /* OrbConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E49152E4E4BCD0021AA2C /* OrbConfiguration.swift */; };
+		7E2E49182E4E4C040021AA2C /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E49172E4E4C040021AA2C /* OrbView.swift */; };
+		7E2E491A2E4E4C2D0021AA2C /* RotatingGlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E49192E4E4C2D0021AA2C /* RotatingGlowView.swift */; };
+		7E2E491C2E4E4C440021AA2C /* WavyBlobView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E491B2E4E4C440021AA2C /* WavyBlobView.swift */; };
+		7E2E491E2E4E4C5E0021AA2C /* ParticlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E491D2E4E4C5E0021AA2C /* ParticlesView.swift */; };
+		7E2E49202E4E4C750021AA2C /* RealisticShadows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E491F2E4E4C750021AA2C /* RealisticShadows.swift */; };
 		7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */; };
 		7E46176D2E46925F00EFAA01 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E46176C2E46925F00EFAA01 /* ContentView.swift */; };
 		7E46176F2E46926100EFAA01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E46176E2E46926100EFAA01 /* Assets.xcassets */; };
@@ -40,6 +46,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		7E2E49152E4E4BCD0021AA2C /* OrbConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbConfiguration.swift; sourceTree = "<group>"; };
+		7E2E49172E4E4C040021AA2C /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
+		7E2E49192E4E4C2D0021AA2C /* RotatingGlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotatingGlowView.swift; sourceTree = "<group>"; };
+		7E2E491B2E4E4C440021AA2C /* WavyBlobView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WavyBlobView.swift; sourceTree = "<group>"; };
+		7E2E491D2E4E4C5E0021AA2C /* ParticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticlesView.swift; sourceTree = "<group>"; };
+		7E2E491F2E4E4C750021AA2C /* RealisticShadows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealisticShadows.swift; sourceTree = "<group>"; };
 		7E4617672E46925F00EFAA01 /* HeyFriend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HeyFriend.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyFriendApp.swift; sourceTree = "<group>"; };
 		7E46176C2E46925F00EFAA01 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -84,6 +96,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7E2E49142E4E4BBD0021AA2C /* Orb */ = {
+			isa = PBXGroup;
+			children = (
+				7E2E49152E4E4BCD0021AA2C /* OrbConfiguration.swift */,
+				7E2E49172E4E4C040021AA2C /* OrbView.swift */,
+				7E2E49192E4E4C2D0021AA2C /* RotatingGlowView.swift */,
+				7E2E491B2E4E4C440021AA2C /* WavyBlobView.swift */,
+				7E2E491D2E4E4C5E0021AA2C /* ParticlesView.swift */,
+				7E2E491F2E4E4C750021AA2C /* RealisticShadows.swift */,
+			);
+			path = Orb;
+			sourceTree = "<group>";
+		};
 		7E46175E2E46925F00EFAA01 = {
 			isa = PBXGroup;
 			children = (
@@ -110,8 +135,9 @@
 				7E46179D2E4698C000EFAA01 /* Info.plist */,
 				7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */,
 				7E46176C2E46925F00EFAA01 /* ContentView.swift */,
+				7E4617712E46926100EFAA01 /* Preview Assets.xcassets */,
 				7E4617702E46926100EFAA01 /* Preview Content */,
-				7E46176E2E46926100EFAA01 /* Assets.xcassets */,
+				7E2E49142E4E4BBD0021AA2C /* Orb */,
 				7E4617942E46976B00EFAA01 /* Chat */,
 				7E46179A2E4697C300EFAA01 /* Services */,
 				7E4617972E4697A700EFAA01 /* ViewModels */,
@@ -122,7 +148,7 @@
 		7E4617702E46926100EFAA01 /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
-				7E4617712E46926100EFAA01 /* Preview Assets.xcassets */,
+				7E46176E2E46926100EFAA01 /* Assets.xcassets */,
 			);
 			path = "Preview Content";
 			sourceTree = "<group>";
@@ -259,6 +285,8 @@
 				Base,
 			);
 			mainGroup = 7E46175E2E46925F00EFAA01;
+			packageReferences = (
+			);
 			productRefGroup = 7E4617682E46925F00EFAA01 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -303,10 +331,16 @@
 			files = (
 				7E46176D2E46925F00EFAA01 /* ContentView.swift in Sources */,
 				7E4617962E46979D00EFAA01 /* ChatView.swift in Sources */,
+				7E2E49202E4E4C750021AA2C /* RealisticShadows.swift in Sources */,
+				7E2E49182E4E4C040021AA2C /* OrbView.swift in Sources */,
+				7E2E491E2E4E4C5E0021AA2C /* ParticlesView.swift in Sources */,
+				7E2E49162E4E4BCD0021AA2C /* OrbConfiguration.swift in Sources */,
 				7E73B9172E4D9617001BB81E /* LiquidSwirlOrbView.swift in Sources */,
 				7E4617992E4697B800EFAA01 /* ChatViewModel.swift in Sources */,
+				7E2E491C2E4E4C440021AA2C /* WavyBlobView.swift in Sources */,
 				7E46179C2E4697D500EFAA01 /* TranscriptionService.swift in Sources */,
 				7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */,
+				7E2E491A2E4E4C2D0021AA2C /* RotatingGlowView.swift in Sources */,
 				7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */,
 				7E4617A12E46B4A000EFAA01 /* TextToSpeechService.swift in Sources */,
 			);
@@ -481,8 +515,8 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -513,8 +547,8 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

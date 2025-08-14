@@ -40,6 +40,12 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     // MARK: Delegate
+//    func speechSynthesizer(_ s: AVSpeechSynthesizer,
+//                           willSpeakRangeOfSpeechString _: NSRange,
+//                           utterance _: AVSpeechUtterance) {
+//        NotificationCenter.default.post(name: .ttsBeat, object: nil)
+//    }
+    
     func speechSynthesizer(_ s: AVSpeechSynthesizer, didStart _: AVSpeechUtterance) {
         isSpeaking = true
         NotificationCenter.default.post(name: .ttsDidStart, object: nil)

@@ -32,6 +32,14 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     // --- Barge-in + restart guards ---
     private var suspendAutoRestart = false
     private enum StopReason { case forTTS, userStop, transient }
+    
+    // at top with other @Published
+    @Published var rmsLevel: CGFloat = 0 // 0...1
+
+    // add a smoother
+    private var smoothed: CGFloat = 0
+    private let smoothAlpha: CGFloat = 0.25
+
 
     // Barge-in monitor
     private var bargeTapInstalled = false
@@ -176,15 +184,27 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         for i in 0..<n { sum += ch[i] * ch[i] }
         let rms = sqrt(sum / Float(n))
 
+        // existing VAD logic…
         if rms > vadAmplitudeGate {
             lastVoiceTime = Date().timeIntervalSince1970
             if TextToSpeechService.shared.isSpeaking {
-                TextToSpeechService.shared.stop()                 // stop TTS now
+                TextToSpeechService.shared.stop()
                 resumeGuardUntil = Date().timeIntervalSince1970 + 0.20
-                // recognition will resume via your onTTSFinish() path
             }
         }
+
+        // NEW: normalize + smooth for the orb
+        let noiseFloor: Float = 0.005
+        let gain: Float = 18.0
+        let raw = max(0, min(1, (rms - noiseFloor) * gain))
+        let target = CGFloat(raw)
+        smoothed = smoothed + smoothAlpha * (target - smoothed)
+
+        DispatchQueue.main.async {
+            self.rmsLevel = self.smoothed
+        }
     }
+
 
     private func armSilenceTimer() {
         silenceTimer?.invalidate()
