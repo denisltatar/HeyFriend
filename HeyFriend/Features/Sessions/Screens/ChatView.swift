@@ -14,6 +14,10 @@ struct ChatView: View {
     @State private var smoothedSpeed: Double = 48
     @State private var lastSpokeAt: Date = .distantPast
     @State private var quantizedSpeed: Double = 48
+    
+    // Summaries
+    @State private var showingSummary = false
+
 
     private var targetSpeed: Double {
         let isSpeaking = viewModel.isTTSSpeaking
@@ -101,19 +105,60 @@ struct ChatView: View {
                     .padding(.top, 4)
                     .padding(.horizontal, 2)
                 }
+                
+                HStack(spacing: 10) {   // Adjust spacing as needed
+                    Spacer()
+
+                    // Mic + status text
+                    VStack(spacing: 13) {
+                        MicControl(isRecording: viewModel.isRecording) {
+                            viewModel.toggleRecording()
+                        }
+                        .frame(width: 100, height: 100)
+
+                        Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
+                    }
+                    .padding(.vertical, 8)
+
+                    // X button directly to the right of mic
+                    Button {
+                        if viewModel.isRecording { viewModel.toggleRecording() }
+                        let sessionId = UUID().uuidString
+                        viewModel.endSessionAndSummarize(sessionId: sessionId)
+                        showingSummary = true
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color(.secondarySystemBackground))
+                                .frame(width: 56, height: 56)
+                                .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 1))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.gray)
+                        }
+                    }
+                    .accessibilityLabel("End session")
+
+                    Spacer()
+                }
+
+
 
                 // Mic control
-                VStack(spacing: 13) {
-                    MicControl(isRecording: viewModel.isRecording) {
-                        viewModel.toggleRecording()
-                    }.frame(width: 100, height: 100)
-
-                    Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
-                        .font(.system(.footnote, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
-                }
-                .padding(.vertical, 8)
+//                VStack(spacing: 13) {
+//                    MicControl(isRecording: viewModel.isRecording) {
+//                        viewModel.toggleRecording()
+//                    }.frame(width: 100, height: 100)
+//
+//                    Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
+//                        .font(.system(.footnote, design: .rounded))
+//                        .foregroundStyle(.secondary)
+//                        .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
+//                }
+//                .padding(.vertical, 8)
             }
             .padding(16)
         }
@@ -130,6 +175,25 @@ struct ChatView: View {
             }
         }.onChange(of: viewModel.isTTSSpeaking) { speaking in
             if speaking { lastSpokeAt = Date() }
+        }.sheet(isPresented: $showingSummary) {
+            if let s = viewModel.currentSummary {
+                SummaryDetailView(summary: s)
+            } else if viewModel.isGeneratingSummary {
+                ProgressView("Creating your summary…").padding()
+            } else if let err = viewModel.summaryError {
+                VStack(spacing: 12) {
+                    Text("Couldn’t create summary").font(.headline)
+                    Text(err).font(.footnote).foregroundStyle(.secondary)
+                    Button("Close") { showingSummary = false }
+                }
+                .padding()
+            } else {
+                VStack(spacing: 12) {
+                    Text("Nothing to summarize yet").font(.headline)
+                    Button("Close") { showingSummary = false }
+                }
+                .padding()
+            }
         }
     }
 

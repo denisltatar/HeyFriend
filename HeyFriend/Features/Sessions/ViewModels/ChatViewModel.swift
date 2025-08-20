@@ -48,6 +48,13 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private var bargeRMSGate: Float { max(0.015, vadAmplitudeGate * 1.2) } // adaptive
     private let bargeHold: TimeInterval = 0.12 // ~120ms of voice to trigger
 
+    // Summaries
+    @Published var currentSummary: SessionSummary?
+    @Published var isGeneratingSummary = false
+    @Published var summaryError: String?
+
+
+    
     override init() {
         super.init()
         speechRecognizer.delegate = self
@@ -354,4 +361,38 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
             self.lastVoiceTime = Date().timeIntervalSince1970
         }
     }
+    
+    // Summary generation call
+    func endSessionAndSummarize(sessionId: String) {
+        isGeneratingSummary = true
+        summaryError = nil
+        
+        // Build full conversation transcript from ChatService
+        let transcript = ChatService.shared.messages
+            .compactMap { msg in
+                guard let role = msg["role"], let content = msg["content"] else { return nil }
+                // Only include user + assistant, skip system prompt
+                if role == "system" { return nil }
+                return "\(role.capitalized): \(content)"
+            }
+            .joined(separator: "\n")
+
+        print("=== Conversation Transcript ===")
+        print(transcript)
+        print("=== End Transcript ===")
+        
+        ChatService.shared.generateSummary(sessionId: sessionId, transcript: transcript) { summary in
+            DispatchQueue.main.async {
+                self.isGeneratingSummary = false
+                if let summary = summary {
+                    self.currentSummary = summary
+                } else {
+                    self.summaryError = "Failed to generate summary."
+                }
+            }
+        }
+    }
+
+    
+    
 }
