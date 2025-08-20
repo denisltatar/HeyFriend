@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7E0EF37D2E5555B500B41643 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0EF37C2E5555B500B41643 /* RootTabView.swift */; };
+		7E0EF37F2E5555F600B41643 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0EF37E2E5555F600B41643 /* InsightsView.swift */; };
+		7E0EF3812E55560800B41643 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0EF3802E55560800B41643 /* SettingsView.swift */; };
 		7E2E49162E4E4BCD0021AA2C /* OrbConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E49152E4E4BCD0021AA2C /* OrbConfiguration.swift */; };
 		7E2E49182E4E4C040021AA2C /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E49172E4E4C040021AA2C /* OrbView.swift */; };
 		7E2E491A2E4E4C2D0021AA2C /* RotatingGlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E49192E4E4C2D0021AA2C /* RotatingGlowView.swift */; };
@@ -46,6 +49,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		7E0EF37C2E5555B500B41643 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		7E0EF37E2E5555F600B41643 /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
+		7E0EF3802E55560800B41643 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7E2E49152E4E4BCD0021AA2C /* OrbConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbConfiguration.swift; sourceTree = "<group>"; };
 		7E2E49172E4E4C040021AA2C /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
 		7E2E49192E4E4C2D0021AA2C /* RotatingGlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotatingGlowView.swift; sourceTree = "<group>"; };
@@ -134,6 +140,9 @@
 			children = (
 				7E46179D2E4698C000EFAA01 /* Info.plist */,
 				7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */,
+				7E0EF37C2E5555B500B41643 /* RootTabView.swift */,
+				7E0EF37E2E5555F600B41643 /* InsightsView.swift */,
+				7E0EF3802E55560800B41643 /* SettingsView.swift */,
 				7E46176C2E46925F00EFAA01 /* ContentView.swift */,
 				7E4617712E46926100EFAA01 /* Preview Assets.xcassets */,
 				7E4617702E46926100EFAA01 /* Preview Content */,
@@ -330,8 +339,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E46176D2E46925F00EFAA01 /* ContentView.swift in Sources */,
+				7E0EF37F2E5555F600B41643 /* InsightsView.swift in Sources */,
+				7E0EF37D2E5555B500B41643 /* RootTabView.swift in Sources */,
 				7E4617962E46979D00EFAA01 /* ChatView.swift in Sources */,
 				7E2E49202E4E4C750021AA2C /* RealisticShadows.swift in Sources */,
+				7E0EF3812E55560800B41643 /* SettingsView.swift in Sources */,
 				7E2E49182E4E4C040021AA2C /* OrbView.swift in Sources */,
 				7E2E491E2E4E4C5E0021AA2C /* ParticlesView.swift in Sources */,
 				7E2E49162E4E4BCD0021AA2C /* OrbConfiguration.swift in Sources */,
