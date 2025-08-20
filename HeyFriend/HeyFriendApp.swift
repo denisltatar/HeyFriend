@@ -12,7 +12,8 @@ struct HeyFriendApp: App {
     var body: some Scene {
         WindowGroup {
 //            ContentView()
-            ChatView()
+//            ChatView()
+            RootTabView()
         }
     }
 }
