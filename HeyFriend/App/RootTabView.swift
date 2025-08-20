@@ -19,7 +19,8 @@ struct RootTabView: View {
                     SessionsHomeView()
                 }
                 .tabItem {
-                    Label("Sessions", systemImage: "bubble.left.and.bubble.right.fill")
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .accessibilityLabel("Sessions")
                 }
                 
                 // Insights
@@ -27,7 +28,8 @@ struct RootTabView: View {
                     InsightsView().navigationTitle("Insights")
                 }
                 .tabItem {
-                    Label("Insights", systemImage: "chart.line.uptrend.xyaxis")
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .accessibilityLabel("Insights")
                 }
                 
                 // Settings
@@ -35,7 +37,8 @@ struct RootTabView: View {
                     SettingsView().navigationTitle("Settings")
                 }
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
+                    Image(systemName: "gearshape.fill")
+                        .accessibilityLabel("Settings")
                 }
             }
         }
