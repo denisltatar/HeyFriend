@@ -105,10 +105,11 @@ struct ChatView: View {
                     .padding(.top, 4)
                     .padding(.horizontal, 2)
                 }
-                // Mic control + End (“X”) button
-                HStack(spacing: 16) {
+                
+                HStack(spacing: 10) {   // Adjust spacing as needed
+                    Spacer()
 
-                    // === Your original VStack (unchanged) ===
+                    // Mic + status text
                     VStack(spacing: 13) {
                         MicControl(isRecording: viewModel.isRecording) {
                             viewModel.toggleRecording()
@@ -121,21 +122,12 @@ struct ChatView: View {
                             .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
                     }
                     .padding(.vertical, 8)
-                    // === end original ===
 
-                    // End-session “X” button
+                    // X button directly to the right of mic
                     Button {
-                        // Stop listening if active
                         if viewModel.isRecording { viewModel.toggleRecording() }
-
-                        // Build transcript (use your real user-only transcript source here)
-//                        let transcript = viewModel.transcribedText
                         let sessionId = UUID().uuidString
-
-                        // Kick off summary generation
                         viewModel.endSessionAndSummarize(sessionId: sessionId)
-
-                        // Present the summary screen (sheet below)
                         showingSummary = true
                     } label: {
                         ZStack {
@@ -145,11 +137,15 @@ struct ChatView: View {
                                 .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 1))
                             Image(systemName: "xmark")
                                 .font(.system(size: 18, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.gray)
                         }
                     }
                     .accessibilityLabel("End session")
+
+                    Spacer()
                 }
+
+
 
                 // Mic control
 //                VStack(spacing: 13) {
