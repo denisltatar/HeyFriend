@@ -86,7 +86,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                      shimmer
                      */
                     let input: String
-                    let format: String = "aac"  // "mp3" | "wav" | "opus" also ok
+                    let format: String = "aac"  // "aac" | "wav" | "opus" also ok
                 }
 
                 var req = URLRequest(url: URL(string: "https://api.openai.com/v1/audio/speech")!)
