@@ -64,7 +64,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
     }
 
     // MARK: - OpenAI TTS
-
+    // Documentation - https://platform.openai.com/docs/guides/text-to-speech
     private func speakWithOpenAI(_ text: String, apiKey: String) {
         // Fetch synthesized audio off the main thread
         Task {
@@ -73,6 +73,18 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                 struct Body: Encodable {
                     let model: String = "gpt-4o-mini-tts"
                     let voice: String = "alloy" // change to "verse", etc. if you like
+                    /* Options for voices:
+                     alloy
+                     ash
+                     ballad
+                     coral
+                     echo
+                     fable
+                     nova
+                     onyx
+                     sage
+                     shimmer
+                     */
                     let input: String
                     let format: String = "mp3"  // "aac" | "wav" | "opus" also ok
                 }
