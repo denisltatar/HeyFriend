@@ -80,7 +80,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                 // Build request
                 struct Body: Encodable {
                     let model: String = "gpt-4o-mini-tts"
-                    let voice: String = "alloy" // change to "verse", etc. if you like
+                    let voice: String = "echo" // change to "verse", etc. if you like
                     /* Options for voices:
                      alloy
                      ash
