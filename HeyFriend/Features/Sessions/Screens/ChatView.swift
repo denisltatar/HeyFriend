@@ -17,7 +17,14 @@ struct ChatView: View {
     
     // Summaries
     @State private var showingSummary = false
-
+    
+    // Amplitude for orb to use to "breathe"
+    private var orbAmplitude: CGFloat {
+        let mic = viewModel.rmsLevel        // 0…1 from mic
+        let tts = viewModel.ttsLevel        // 0…1 from AVAudioPlayer metering
+        let speakingFloor: CGFloat = viewModel.isTTSSpeaking ? 0.10 : 0
+        return max(mic, max(tts, speakingFloor))
+    }
 
     private var targetSpeed: Double {
         let isSpeaking = viewModel.isTTSSpeaking
@@ -67,44 +74,43 @@ struct ChatView: View {
 //                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
 //                    size: 176 // keep it compact
 //                )
-                OrbView(configuration: makeOrbConfig(speed: quantizedSpeed))
+                OrbView(configuration: makeOrbConfig(speed: quantizedSpeed),
+                        amplitude: orbAmplitude)
                     .frame(width: 176, height: 176)
                     .onAppear { smoothedSpeed = targetSpeed; quantizedSpeed = targetSpeed }
                     .onChange(of: targetSpeed) { new in
-                        // exponential smoothing
                         let alpha = 0.18
                         smoothedSpeed += (new - smoothedSpeed) * alpha
-
-                        // quantize to reduce restart frequency (change only in ~6-pt steps)
                         let step = 6.0
                         let stepped = (smoothedSpeed / step).rounded() * step
-                        if abs(stepped - quantizedSpeed) >= 0.5 {   // tiny hysteresis
+                        if abs(stepped - quantizedSpeed) >= 0.5 {
                             quantizedSpeed = stepped
                         }
                     }
-                    .frame(width: 176, height: 176)
 
 
                 // Conversation
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if !viewModel.transcribedText.isEmpty {
-                            MessageCard(role: "You",
-                                        text: viewModel.transcribedText,
-                                        alignment: .trailing,
-                                        tone: .user)
-                        }
-
-                        if !viewModel.aiResponse.isEmpty {
-                            MessageCard(role: "Assistant",
-                                        text: viewModel.aiResponse,
-                                        alignment: .leading,
-                                        tone: .ai)
-                        }
-                    }
-                    .padding(.top, 4)
-                    .padding(.horizontal, 2)
-                }
+//                ScrollView(showsIndicators: false) {
+//                    VStack(alignment: .leading, spacing: 12) {
+//                        if !viewModel.transcribedText.isEmpty {
+//                            MessageCard(role: "You",
+//                                        text: viewModel.transcribedText,
+//                                        alignment: .trailing,
+//                                        tone: .user)
+//                        }
+//
+//                        if !viewModel.aiResponse.isEmpty {
+//                            MessageCard(role: "Assistant",
+//                                        text: viewModel.aiResponse,
+//                                        alignment: .leading,
+//                                        tone: .ai)
+//                        }
+//                    }
+//                    .padding(.top, 4)
+//                    .padding(.horizontal, 2)
+//                }
+                
+                Spacer()
                 
                 HStack(spacing: 10) {   // Adjust spacing as needed
                     Spacer()

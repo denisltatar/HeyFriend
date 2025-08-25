@@ -13,7 +13,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var transcribedText: String = ""
     @Published var isRecording = false
     @Published var aiResponse: String = ""
-    @Published var isTTSSpeaking = false   // ← add if missing
+    @Published var isTTSSpeaking = false
 
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
     private let audioEngine = AVAudioEngine()
@@ -52,7 +52,9 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var currentSummary: SessionSummary?
     @Published var isGeneratingSummary = false
     @Published var summaryError: String?
-
+    
+    // Adding TTS level to monitor assistant's expression to make orb movement match
+    @Published var ttsLevel: CGFloat = 0   // 0..1 assistant loudness
 
     
     override init() {
@@ -64,6 +66,12 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                                                name: .ttsDidStart, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onTTSFinish),
                                                name: .ttsDidFinish, object: nil)
+        NotificationCenter.default.addObserver(forName: .ttsOutputLevel, object: nil, queue: .main) { [weak self] note in
+            if let lvl = note.userInfo?["level"] as? CGFloat {
+                self?.ttsLevel = lvl
+            }
+        }
+
         // Observers for handling interruptions
 //        NotificationCenter.default.addObserver(self, selector: #selector(handleInterruption),
 //            name: AVAudioSession.interruptionNotification, object: nil)
@@ -251,6 +259,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     }
     
     @objc private func onTTSStart() {
+        isTTSSpeaking = true
         print("[barge] onTTSStart")
         // Pause/stop recognition so the bot doesn't hear itself
         stopRecognition(.forTTS)
@@ -341,6 +350,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
 
     @objc private func onTTSFinish() {
+        isTTSSpeaking = false
         print("[barge] onTTSFinish (bargeRequested=\(bargeRequested))")
         removeBargeInTap()
         // Resume listening for the next turn
