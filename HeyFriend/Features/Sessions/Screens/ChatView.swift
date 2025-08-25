@@ -22,7 +22,7 @@ struct ChatView: View {
     private var orbAmplitude: CGFloat {
         let mic = viewModel.rmsLevel        // 0…1 from mic
         let tts = viewModel.ttsLevel        // 0…1 from AVAudioPlayer metering
-        let speakingFloor: CGFloat = viewModel.isTTSSpeaking ? 0.18 : 0
+        let speakingFloor: CGFloat = viewModel.isTTSSpeaking ? 0.10 : 0
         return max(mic, max(tts, speakingFloor))
     }
 

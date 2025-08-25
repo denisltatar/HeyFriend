@@ -72,9 +72,9 @@ public struct OrbConfiguration {
         showShadow: Bool = true,
         speed: Double = 60,
         // NEW defaults
-        maxScaleBoost: CGFloat = 0.25,
-        maxOffset: CGFloat = 0,
-        offsetSpeed: Double = 1.0
+        maxScaleBoost: CGFloat = 0.35,
+        maxOffset: CGFloat = 3,
+        offsetSpeed: Double = 1.15
     ) {
         self.init(
             backgroundColors: backgroundColors,
