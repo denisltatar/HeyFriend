@@ -15,10 +15,13 @@
 
 import Foundation
 import AVFoundation
+// ADD for CADisplayLink
+import QuartzCore
 
 extension Notification.Name {
     static let ttsDidStart  = Notification.Name("ttsDidStart")
     static let ttsDidFinish = Notification.Name("ttsDidFinish")
+    static let ttsOutputLevel = Notification.Name("ttsOutputLevel")
 }
 
 final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
@@ -32,6 +35,11 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
     private let playbackQueue = DispatchQueue(label: "heyfriend.tts.playback")
 
     private(set) var isSpeaking = false
+    
+    // MARK: - TTS Output Metering
+    private var meterLink: CADisplayLink?
+    private var lastTTSLevel: Float = 0    // smoothed 0..1
+    private let ttsSmoothAlpha: Float = 0.25
 
     override init() {
         super.init()
@@ -115,6 +123,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                         // NOTE: Your ChatViewModel already configures AVAudioSession
                         let newPlayer = try AVAudioPlayer(contentsOf: fileURL)
                         newPlayer.delegate = self
+                        newPlayer.isMeteringEnabled = true
                         newPlayer.prepareToPlay()
 
                         self.playbackQueue.sync {
@@ -127,6 +136,8 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
 
                         self.playbackQueue.async {
                             self.player?.play()
+                            // Begin metering volume for assistanct voice's orb to 'breath/nudge'
+                            self.startMetering()
                         }
                     } catch {
                         print("AVAudioPlayer init failed: \(error)")
@@ -200,13 +211,42 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
     // OpenAI playback delegate
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         isSpeaking = false
+        stopMetering()
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
         playbackQueue.sync { self.player = nil }
     }
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         print("AVAudioPlayer decode error: \(error?.localizedDescription ?? "unknown")")
         isSpeaking = false
+        stopMetering()
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
         playbackQueue.sync { self.player = nil }
     }
+    
+    // Helpers to start/stop metering (of TTS volume)
+    private func startMetering() {
+        stopMetering()
+        meterLink = CADisplayLink(target: self, selector: #selector(tickMeter))
+        meterLink?.add(to: .main, forMode: .common)
+    }
+
+    private func stopMetering() {
+        meterLink?.invalidate()
+        meterLink = nil
+        lastTTSLevel = 0
+        // send a final “0 level” so the UI settles
+        NotificationCenter.default.post(name: .ttsOutputLevel, object: nil, userInfo: ["level": CGFloat(0)])
+    }
+
+    @objc private func tickMeter() {
+        guard let p = player else { return }
+        p.updateMeters()
+        // dB range roughly [-60, 0]; map to 0..1
+        let power = p.averagePower(forChannel: 0)
+        let linear = max(0, min(1, pow(10, power / 20)))   // convert dB to linear (0..1)
+        // low-pass smoothing
+        lastTTSLevel = lastTTSLevel * (1 - ttsSmoothAlpha) + linear * ttsSmoothAlpha
+        NotificationCenter.default.post(name: .ttsOutputLevel, object: nil, userInfo: ["level": CGFloat(lastTTSLevel)])
+    }
+
 }

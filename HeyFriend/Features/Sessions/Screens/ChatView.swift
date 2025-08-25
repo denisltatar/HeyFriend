@@ -20,11 +20,11 @@ struct ChatView: View {
     
     // Amplitude for orb to use to "breathe"
     private var orbAmplitude: CGFloat {
-        // while TTS speaks, ensure a gentle baseline even if mic is silent
-        let mic = viewModel.rmsLevel
-        return viewModel.isTTSSpeaking ? max(mic, 0.28) : mic
+        let mic = viewModel.rmsLevel        // 0…1 from mic
+        let tts = viewModel.ttsLevel        // 0…1 from AVAudioPlayer metering
+        let speakingFloor: CGFloat = viewModel.isTTSSpeaking ? 0.18 : 0
+        return max(mic, max(tts, speakingFloor))
     }
-
 
     private var targetSpeed: Double {
         let isSpeaking = viewModel.isTTSSpeaking
@@ -90,25 +90,27 @@ struct ChatView: View {
 
 
                 // Conversation
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if !viewModel.transcribedText.isEmpty {
-                            MessageCard(role: "You",
-                                        text: viewModel.transcribedText,
-                                        alignment: .trailing,
-                                        tone: .user)
-                        }
-
-                        if !viewModel.aiResponse.isEmpty {
-                            MessageCard(role: "Assistant",
-                                        text: viewModel.aiResponse,
-                                        alignment: .leading,
-                                        tone: .ai)
-                        }
-                    }
-                    .padding(.top, 4)
-                    .padding(.horizontal, 2)
-                }
+//                ScrollView(showsIndicators: false) {
+//                    VStack(alignment: .leading, spacing: 12) {
+//                        if !viewModel.transcribedText.isEmpty {
+//                            MessageCard(role: "You",
+//                                        text: viewModel.transcribedText,
+//                                        alignment: .trailing,
+//                                        tone: .user)
+//                        }
+//
+//                        if !viewModel.aiResponse.isEmpty {
+//                            MessageCard(role: "Assistant",
+//                                        text: viewModel.aiResponse,
+//                                        alignment: .leading,
+//                                        tone: .ai)
+//                        }
+//                    }
+//                    .padding(.top, 4)
+//                    .padding(.horizontal, 2)
+//                }
+                
+                Spacer()
                 
                 HStack(spacing: 10) {   // Adjust spacing as needed
                     Spacer()
