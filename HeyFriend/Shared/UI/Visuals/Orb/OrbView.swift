@@ -10,59 +10,66 @@ import SwiftUI
 
 public struct OrbView: View {
     private let config: OrbConfiguration
+    private let amplitude: CGFloat  // 0…1 mic/tts amplitude
     
-    public init(configuration: OrbConfiguration = OrbConfiguration()) {
+    public init(configuration: OrbConfiguration = OrbConfiguration(), amplitude: CGFloat = 0) {
         self.config = configuration
+        self.amplitude = amplitude
     }
 
     public var body: some View {
-        GeometryReader { geometry in
-            let size = min(geometry.size.width, geometry.size.height)
+        TimelineView(.animation) { timeline in
+            let t = CGFloat(timeline.date.timeIntervalSinceReferenceDate * max(0.1, config.offsetSpeed))
 
-            ZStack {
-                // Base gradient background layer
-                if config.showBackground {
-                    background
-                }
-                
-                // Creates depth with rotating glow effects
-                baseDepthGlows(size: size)
+            GeometryReader { geometry in
+                let size = min(geometry.size.width, geometry.size.height)
 
-                // Adds organic movement with flowing blob shapes
-                if config.showWavyBlobs {
-                    wavyBlob
-                    wavyBlobTwo
-                }
+                ZStack {
+                    if config.showBackground { background }
+                    baseDepthGlows(size: size)
 
-                // Adds bright, energetic core glow animations
-                if config.showGlowEffects {
-                    coreGlowEffects(size: size)
-                }
+                    if config.showWavyBlobs {
+                        wavyBlob
+                        wavyBlobTwo
+                    }
 
-                // Overlays floating particle effects for additional dynamism
-                if config.showParticles {
-                    particleView
-                        .frame(maxWidth: size, maxHeight: size)
+                    if config.showGlowEffects {
+                        coreGlowEffects(size: size)
+                    }
+
+                    if config.showParticles {
+                        particleView
+                            .frame(maxWidth: size, maxHeight: size)
+                    }
                 }
-            }
-            // Orb outline for depth
-            .overlay {
-                realisticInnerGlows
-            }
-            // Masking out all the effects so it forms a perfect circle
-            .mask {
-                Circle()
-            }
-            .aspectRatio(1, contentMode: .fit)
-            // Adding realistic, layered shadows so its brighter near the core, and softer as it grows outwards
-            .modifier(
-                RealisticShadowModifier(
-                    colors: config.showShadow ? config.backgroundColors : [.clear],
-                    radius: size * 0.08
+                .overlay { realisticInnerGlows }
+                .mask { Circle() }
+                .aspectRatio(1, contentMode: .fit)
+                .modifier(
+                    RealisticShadowModifier(
+                        colors: config.showShadow ? config.backgroundColors : [.clear],
+                        radius: size * 0.08
+                    )
                 )
-            )
+                // NEW: breathe + nudge
+                .scaleEffect(1.0 + config.maxScaleBoost * amplitude, anchor: .center)
+                .offset(x: offsetX(t: t), y: offsetY(t: t))
+                .animation(.easeOut(duration: 0.08), value: amplitude) // snappy level response
+            }
         }
     }
+
+    private func offsetX(t: CGFloat) -> CGFloat {
+        // small Lissajous-ish path; magnitude scales with amplitude
+        let base = sin(t) * cos(t * 0.7)
+        return base * config.maxOffset * amplitude
+    }
+
+    private func offsetY(t: CGFloat) -> CGFloat {
+        let base = cos(t * 0.9)
+        return base * config.maxOffset * amplitude
+    }
+
 
     private var background: some View {
         LinearGradient(colors: config.backgroundColors,

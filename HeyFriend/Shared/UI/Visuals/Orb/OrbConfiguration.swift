@@ -23,6 +23,14 @@ public struct OrbConfiguration {
     public let coreGlowIntensity: Double
     public let speed: Double
     
+    // NEW: mic-reactivity knobs
+    // How much the orb “breathes” (grows) at peak volume.
+    public let maxScaleBoost: CGFloat   // e.g. 0.10 → +10% at full amplitude
+    // The biggest distance (in points) the orb is allowed to wander from center while it wiggles.
+    public let maxOffset: CGFloat       // e.g. 6pt lateral/vertical nudge
+    // A speed multiplier for the wiggle motion (not the size).
+    public let offsetSpeed: Double      // how “wiggly” the offset feels
+
     internal init(
         backgroundColors: [Color],
         glowColor: Color,
@@ -33,7 +41,10 @@ public struct OrbConfiguration {
         showParticles: Bool,
         showGlowEffects: Bool,
         showShadow: Bool,
-        speed: Double
+        speed: Double,
+        maxScaleBoost: CGFloat,
+        maxOffset: CGFloat,
+        offsetSpeed: Double
     ) {
         self.backgroundColors = backgroundColors
         self.glowColor = glowColor
@@ -45,6 +56,9 @@ public struct OrbConfiguration {
         self.showShadow = showShadow
         self.coreGlowIntensity = coreGlowIntensity
         self.speed = speed
+        self.maxScaleBoost = maxScaleBoost
+        self.maxOffset = maxOffset
+        self.offsetSpeed = offsetSpeed
     }
     
     public init(
@@ -56,7 +70,11 @@ public struct OrbConfiguration {
         showParticles: Bool = true,
         showGlowEffects: Bool = true,
         showShadow: Bool = true,
-        speed: Double = 60
+        speed: Double = 60,
+        // NEW defaults
+        maxScaleBoost: CGFloat = 0.25,
+        maxOffset: CGFloat = 0,
+        offsetSpeed: Double = 1.0
     ) {
         self.init(
             backgroundColors: backgroundColors,
@@ -68,7 +86,10 @@ public struct OrbConfiguration {
             showParticles: showParticles,
             showGlowEffects: showGlowEffects,
             showShadow: showShadow,
-            speed: speed
+            speed: speed,
+            maxScaleBoost: maxScaleBoost,
+            maxOffset: maxOffset,
+            offsetSpeed: offsetSpeed
         )
     }
 }

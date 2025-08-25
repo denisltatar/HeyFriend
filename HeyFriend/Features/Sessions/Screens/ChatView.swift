@@ -17,6 +17,13 @@ struct ChatView: View {
     
     // Summaries
     @State private var showingSummary = false
+    
+    // Amplitude for orb to use to "breathe"
+    private var orbAmplitude: CGFloat {
+        // while TTS speaks, ensure a gentle baseline even if mic is silent
+        let mic = viewModel.rmsLevel
+        return viewModel.isTTSSpeaking ? max(mic, 0.28) : mic
+    }
 
 
     private var targetSpeed: Double {
@@ -67,22 +74,19 @@ struct ChatView: View {
 //                    mode: viewModel.isTTSSpeaking ? .responding : .listening,
 //                    size: 176 // keep it compact
 //                )
-                OrbView(configuration: makeOrbConfig(speed: quantizedSpeed))
+                OrbView(configuration: makeOrbConfig(speed: quantizedSpeed),
+                        amplitude: orbAmplitude)
                     .frame(width: 176, height: 176)
                     .onAppear { smoothedSpeed = targetSpeed; quantizedSpeed = targetSpeed }
                     .onChange(of: targetSpeed) { new in
-                        // exponential smoothing
                         let alpha = 0.18
                         smoothedSpeed += (new - smoothedSpeed) * alpha
-
-                        // quantize to reduce restart frequency (change only in ~6-pt steps)
                         let step = 6.0
                         let stepped = (smoothedSpeed / step).rounded() * step
-                        if abs(stepped - quantizedSpeed) >= 0.5 {   // tiny hysteresis
+                        if abs(stepped - quantizedSpeed) >= 0.5 {
                             quantizedSpeed = stepped
                         }
                     }
-                    .frame(width: 176, height: 176)
 
 
                 // Conversation

@@ -63,7 +63,7 @@ struct SessionsHomeView: View {
         .background(
             NavigationLink(
                 destination: ChatView()
-                    .navigationTitle("Live Session")
+//                    .navigationTitle("Live Session")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar(.hidden, for: .tabBar),
                 isActive: $goToChat,
