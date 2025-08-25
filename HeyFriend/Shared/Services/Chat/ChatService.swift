@@ -64,7 +64,20 @@ final class ChatService {
 }
 
 extension ChatService {
-    struct RawSummary: Codable { let summary: [String]; let tone: String }
+    // JSON you expect back from the model
+    struct RawSummary: Codable {
+        let summary: [String]
+        let tone: String
+        let supporting_tones: [String]?
+        let tone_note: String?
+        struct Language: Codable {
+            let repeated_words: [String]
+            let thinking_style: String
+            let emotional_indicators: String
+        }
+        let language: Language?
+        let recommendation: String?
+    }
     
     // Commpiling transcript
     var conversationTranscript: String {
@@ -86,23 +99,60 @@ extension ChatService {
         // Keep the transcript small & user-only
         let clipped = String(transcript.suffix(4000))
 
-        let system = "You are a supportive reflection assistant. Output only valid JSON with keys 'summary' (2–3 short bullets) and 'tone' (one sentence). No extra text."
-        let user = """
-        From this transcript, return JSON only:
-        {
-          "summary": ["<4–6 bullets, each ≤15 words>"],
-          "tone": "<one short sentence about overall tone>"
-        }
+        let system = 
+            """
+            You are a supportive reflection assistant. You must base every field ONLY on the provided transcript.
+            Return STRICT, MINIFIED JSON that matches the schema. Do not add commentary or code fences. Do not invent content that isn’t grounded
+            in the transcript. Keep facts neutral and kind.
+            """
+        let user = 
+            """
+            From the transcript below, extract fields. Output JSON ONLY with this schema:
 
-        If transcript indicates imminent self-harm or harm to others, return:
-        {
-          "summary": ["We can’t summarize right now."],
-          "tone": "Please review support options and consider immediate help."
-        }
+            {
+              "summary": ["<5 bullets, each ≤20 words>"],
+              "tone": "<primary tone, 1–3 words>",
+              "supporting_tones": ["<0–3 short tones>"],
+              "tone_note": "<1 short sentence explaining the tone>",
+              "language": {
+                "repeated_words": ["<distinct words the speaker uses repeatedly>"], // see rules
+                "thinking_style": "<short phrase>",                                 // see rules, e.g. "Future‑focused, analytical"
+                "emotional_indicators": "<short phrase>"                            // see rules, e.g. "Cautious optimism"
+              },
+              "recommendation": "<≤300 tokens of friendly, actionable advice that ideally are CBT-DBT-aligned micro-steps, grounded based on what was discussed>"
+            }
+            
+            RULES
+            - Work ONLY from the transcript; never include examples or placeholders.
+            - Keep writing neutral, kind, non‑clinical.
+            - SUMMARY: concise, factual bullets (no duplicates).
+            - TONE: pick a single best‑fit tone actually reflected in the transcript (e.g., Calm, Anxious, Hopeful).
+            - SUPPORTING_TONES: 0–3 additional tones present (short nouns only).
+            - TONE_NOTE: one sentence explaining tone choice with reference to speaker content (no quotes needed).
+            - LANGUAGE.repeated_words:
+              • Identify the speaker’s repeated lexical items (unigrams), case‑insensitive.
+              • Exclude common stopwords and filler (e.g., i, me, the, and, uh, um, like, you know).
+              • Consider word stems (e.g., “probable/probably” → “probably”).
+              • Include up to 5 items that appear ≥3 times or feel noticeably frequent; otherwise return "none".
+            - LANGUAGE.thinking_style: short phrase drawn from linguistic cues (e.g., temporal focus, modality, reasoning).
+            - LANGUAGE.emotional_indicators: short phrase (e.g., “cautious optimism”, “frustrated but determined”) only if supported.
+            - If LANGUAGE has no clear signals, omit the whole "language" object.
+            - RECOMMENDATION: ≤300 tokens, concrete and doable (CBT/DBT‑aligned micro‑steps), grounded in what was discussed.
+            - If there are signs of imminent self‑harm/harm-to-others, instead return:
+                {
+                  "summary": ["We can’t summarize right now."],
+                  "tone": "Please review support options and consider immediate help.",
+                  "supporting_tones": [],
+                  "tone_note": "",
+                  "language": { "repeated_words": [], 
+                                "thinking_style": "",
+                                "emotional_indicators": "" },
+                  "recommendation": "We noticed signs of imminent self-harm/harm-to-others. Please reachout to someone, anyone. Your life is valuable. You are worth it. You deserve to have an amazing and successfull life. There are things still in store for you! We love you!"
+                }
 
-        Transcript:
-        \(clipped)
-        """
+            Transcript:
+            \(clipped)
+            """
 
         var req = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
         req.httpMethod = "POST"
@@ -141,14 +191,23 @@ extension ChatService {
                   let raw = try? JSONDecoder().decode(RawSummary.self, from: rawData)
             else { completion(nil); return }
 
-            let summary = SessionSummary(
+            let mapped = SessionSummary(
                 id: sessionId,
                 summary: Array(raw.summary.prefix(3)),
                 tone: raw.tone,
-                createdAt: Date()
+                createdAt: Date(),
+                supportingTones: raw.supporting_tones,
+                toneNote: raw.tone_note,
+                language: raw.language.map {
+                    .init(
+                        repeatedWords: $0.repeated_words,
+                        thinkingStyle: $0.thinking_style,
+                        emotionalIndicators: $0.emotional_indicators
+                    )
+                },
+                recommendation: raw.recommendation
             )
-            completion(summary)
-        }
-        .resume()
+            completion(mapped)
+        }.resume()
     }
 }
