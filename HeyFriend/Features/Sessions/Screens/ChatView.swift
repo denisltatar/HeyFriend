@@ -112,44 +112,45 @@ struct ChatView: View {
                 
                 Spacer()
                 
-                HStack(spacing: 10) {   // Adjust spacing as needed
+                HStack {
                     Spacer()
 
-                    // Mic + status text
-                    VStack(spacing: 13) {
-                        MicControl(isRecording: viewModel.isRecording) {
-                            viewModel.toggleRecording()
-                        }
-                        .frame(width: 100, height: 100)
+                    ZStack(alignment: .trailing) {
+                        VStack(spacing: 13) {
+                            MicControl(isRecording: viewModel.isRecording) {
+                                viewModel.toggleRecording()
+                            }
+                            .frame(width: 100, height: 100)
 
-                        Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
-                            .font(.system(.footnote, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
-                    }
-                    .padding(.vertical, 8)
-
-                    // X button directly to the right of mic
-                    Button {
-                        if viewModel.isRecording { viewModel.toggleRecording() }
-                        let sessionId = UUID().uuidString
-                        viewModel.endSessionAndSummarize(sessionId: sessionId)
-                        showingSummary = true
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .fill(Color(.secondarySystemBackground))
-                                .frame(width: 56, height: 56)
-                                .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 1))
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.gray)
+                            Text(viewModel.isRecording ? "Listening…" : "Tap to speak")
+                                .font(.system(.footnote, design: .rounded))
+                                .foregroundStyle(.secondary)
+                                .animation(.easeInOut(duration: 0.2), value: viewModel.isRecording)
                         }
+
+                        // X button “floats” to the right of mic
+                        Button {
+                            if viewModel.isRecording { viewModel.toggleRecording() }
+                            let sessionId = UUID().uuidString
+                            viewModel.endSessionAndSummarize(sessionId: sessionId)
+                            showingSummary = true
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(.secondarySystemBackground))
+                                    .frame(width: 56, height: 56)
+                                    .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 1))
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.gray)
+                            }
+                        }
+                        .offset(x: 80, y: -5) // tweak these numbers for position
                     }
-                    .accessibilityLabel("End session")
 
                     Spacer()
                 }
+
 
 
 
