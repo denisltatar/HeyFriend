@@ -46,7 +46,7 @@ struct RootTabView: View {
             do {
                 try await AuthService.shared.signInAnonymouslyIfNeeded()
                 if let uid = AuthService.shared.userId {
-                    try await FirestoreService.shared.writeHello(uid: uid)
+//                    try await FirestoreService.shared.writeHello(uid: uid)
                     print("Firestore OK ✅")
                 }
             } catch {

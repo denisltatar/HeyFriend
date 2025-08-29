@@ -132,7 +132,7 @@ struct ChatView: View {
                         Button {
                             if viewModel.isRecording { viewModel.toggleRecording() }
                             let sessionId = UUID().uuidString
-                            viewModel.endSessionAndSummarize(sessionId: sessionId)
+                            viewModel.endSessionAndSummarize()
                             showingSummary = true
                         } label: {
                             ZStack {
