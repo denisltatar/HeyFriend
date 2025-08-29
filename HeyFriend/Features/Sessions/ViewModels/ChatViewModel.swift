@@ -56,6 +56,9 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     // Adding TTS level to monitor assistant's expression to make orb movement match
     @Published var ttsLevel: CGFloat = 0   // 0..1 assistant loudness
 
+    // Firestore session + transcript we persist
+    @Published var currentSessionId: String?
+    private var transcriptLines: [String] = []
     
     override init() {
         super.init()
@@ -122,6 +125,22 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         isRecording = true
         armSilenceTimer()
         lastVoiceTime = Date().timeIntervalSince1970
+        
+        // 🔽 NEW: open a Firestore session + reset transcript
+        Task {
+            do {
+                try await AuthService.shared.signInAnonymouslyIfNeeded()
+                if let uid = AuthService.shared.userId {
+                    let sid = try await FirestoreService.shared.startSession(uid: uid)
+                    await MainActor.run {
+                        self.currentSessionId = sid
+                        self.transcriptLines.removeAll()
+                    }
+                }
+            } catch {
+                print("Failed to start Firestore session:", error)
+            }
+        }
     }
 
     func stopSession() {
@@ -245,10 +264,17 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         // Stop current recognition to avoid cross-talk with TTS
         stopRecognition(.forTTS)
 
+         // 🔽 NEW: record the user turn, persist transcript
+        appendAndPersist(role: "You", text: userTurn)
+
         ChatService.shared.sendMessage(userTurn) { reply in
             DispatchQueue.main.async {
-                self.aiResponse = (reply ?? "Sorry, I didn’t catch that. Can you try again?").trimmingCharacters(in: .whitespacesAndNewlines)
-                TextToSpeechService.shared.speak(self.aiResponse)
+                let bot = (reply ?? "Sorry, I didn’t catch that. Can you try again?").trimmingCharacters(in: .whitespacesAndNewlines)
+                self.aiResponse = bot
+                // 🔽 NEW: record assistant turn, persist transcript
+                self.appendAndPersist(role: "HeyFriend", text: bot)
+
+                TextToSpeechService.shared.speak(bot)
                 // After TTS finishes, onTTSFinish() will bring us back to listening
             }
         }
@@ -257,6 +283,16 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         utteranceBuffer = ""
         lastVoiceTime = Date().timeIntervalSince1970
     }
+    
+    private func appendAndPersist(role: String, text: String) {
+        transcriptLines.append("\(role): \(text)")
+        guard let uid = AuthService.shared.userId, let sid = currentSessionId else { return }
+        let full = transcriptLines.joined(separator: "\n")
+        Task {
+            try? await FirestoreService.shared.updateTranscript(uid: uid, sid: sid, transcript: full)
+        }
+    }
+
     
     @objc private func onTTSStart() {
         isTTSSpeaking = true
@@ -373,35 +409,47 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     }
     
     // Summary generation call
-    func endSessionAndSummarize(sessionId: String) {
+    func endSessionAndSummarize() {
         isGeneratingSummary = true
         summaryError = nil
-        
-        // Build full conversation transcript from ChatService
-        let transcript = ChatService.shared.messages
-            .compactMap { msg in
-                guard let role = msg["role"], let content = msg["content"] else { return nil }
-                // Only include user + assistant, skip system prompt
-                if role == "system" { return nil }
-                return "\(role.capitalized): \(content)"
-            }
-            .joined(separator: "\n")
 
-        print("=== Conversation Transcript ===")
-        print(transcript)
-        print("=== End Transcript ===")
-        
-        ChatService.shared.generateSummary(sessionId: sessionId, transcript: transcript) { summary in
+        // Build transcript from the local lines we saved (same format you used)
+        let transcript = transcriptLines.joined(separator: "\n")
+
+        // Safety: capture session id now
+        guard let sid = currentSessionId, let uid = AuthService.shared.userId else {
+            isGeneratingSummary = false
+            summaryError = "No session to summarize."
+            return
+        }
+
+        print("=== Conversation Transcript ===\n\(transcript)\n=== End Transcript ===")
+
+        ChatService.shared.generateSummary(sessionId: sid, transcript: transcript) { summary in
             DispatchQueue.main.async {
                 self.isGeneratingSummary = false
-                if let summary = summary {
-                    self.currentSummary = summary
-                } else {
+                guard let mapped = summary else {
                     self.summaryError = "Failed to generate summary."
+                    return
+                }
+                self.currentSummary = mapped
+
+                // 🔽 Persist summary bundle to Firestore
+                Task {
+                    // You likely have a better duration source; placeholder 0 here:
+                    try? await FirestoreService.shared.writeSummaryBundle(
+                        uid: uid,
+                        sid: sid,
+                        durationSec: 0,
+                        mapped: mapped
+                    )
+                    // Clear active session
+                    await MainActor.run { self.currentSessionId = nil }
                 }
             }
         }
     }
+
 
     
     
