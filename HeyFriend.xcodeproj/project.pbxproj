@@ -24,7 +24,6 @@
 		7E2E491C2E4E4C440021AA2C /* WavyBlobView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E491B2E4E4C440021AA2C /* WavyBlobView.swift */; };
 		7E2E491E2E4E4C5E0021AA2C /* ParticlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E491D2E4E4C5E0021AA2C /* ParticlesView.swift */; };
 		7E2E49202E4E4C750021AA2C /* RealisticShadows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E491F2E4E4C750021AA2C /* RealisticShadows.swift */; };
-		7E3111A32E6117A0002FD45B /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7E3111A22E6117A0002FD45B /* GoogleService-Info.plist */; };
 		7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */; };
 		7E46176F2E46926100EFAA01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E46176E2E46926100EFAA01 /* Assets.xcassets */; };
 		7E4617722E46926100EFAA01 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E4617712E46926100EFAA01 /* Preview Assets.xcassets */; };
@@ -39,6 +38,7 @@
 		7E73B9172E4D9617001BB81E /* LiquidSwirlOrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E73B9162E4D9617001BB81E /* LiquidSwirlOrbView.swift */; };
 		7EA134122E5647E6004109B9 /* SessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA134112E5647E6004109B9 /* SessionSummary.swift */; };
 		7EA134142E564804004109B9 /* SummaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA134132E564804004109B9 /* SummaryProvider.swift */; };
+		7EDF910C2E622CBA00F3A62F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,7 +73,6 @@
 		7E2E491B2E4E4C440021AA2C /* WavyBlobView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WavyBlobView.swift; sourceTree = "<group>"; };
 		7E2E491D2E4E4C5E0021AA2C /* ParticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticlesView.swift; sourceTree = "<group>"; };
 		7E2E491F2E4E4C750021AA2C /* RealisticShadows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealisticShadows.swift; sourceTree = "<group>"; };
-		7E3111A22E6117A0002FD45B /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7E4617672E46925F00EFAA01 /* HeyFriend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HeyFriend.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeyFriendApp.swift; sourceTree = "<group>"; };
 		7E46176E2E46926100EFAA01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -92,6 +91,7 @@
 		7E73B9162E4D9617001BB81E /* LiquidSwirlOrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidSwirlOrbView.swift; sourceTree = "<group>"; };
 		7EA134112E5647E6004109B9 /* SessionSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummary.swift; sourceTree = "<group>"; };
 		7EA134132E564804004109B9 /* SummaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryProvider.swift; sourceTree = "<group>"; };
+		7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,7 +135,7 @@
 		7E0EF3862E555EE800B41643 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				7E3111A22E6117A0002FD45B /* GoogleService-Info.plist */,
+				7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */,
 				7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */,
 				7E0EF37C2E5555B500B41643 /* RootTabView.swift */,
 			);
@@ -459,7 +459,7 @@
 			files = (
 				7E4617722E46926100EFAA01 /* Preview Assets.xcassets in Resources */,
 				7E46176F2E46926100EFAA01 /* Assets.xcassets in Resources */,
-				7E3111A32E6117A0002FD45B /* GoogleService-Info.plist in Resources */,
+				7EDF910C2E622CBA00F3A62F /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
