@@ -127,20 +127,20 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         lastVoiceTime = Date().timeIntervalSince1970
         
         // 🔽 NEW: open a Firestore session + reset transcript
-        Task {
-            do {
-                try await AuthService.shared.signInAnonymouslyIfNeeded()
-                if let uid = AuthService.shared.userId {
-                    let sid = try await FirestoreService.shared.startSession(uid: uid)
-                    await MainActor.run {
-                        self.currentSessionId = sid
-                        self.transcriptLines.removeAll()
-                    }
-                }
-            } catch {
-                print("Failed to start Firestore session:", error)
-            }
-        }
+//        Task {
+//            do {
+//                try await AuthService.shared.signInAnonymouslyIfNeeded()
+//                if let uid = AuthService.shared.userId {
+//                    let sid = try await FirestoreService.shared.startSession(uid: uid)
+//                    await MainActor.run {
+//                        self.currentSessionId = sid
+//                        self.transcriptLines.removeAll()
+//                    }
+//                }
+//            } catch {
+//                print("Failed to start Firestore session:", error)
+//            }
+//        }
     }
 
     func stopSession() {
