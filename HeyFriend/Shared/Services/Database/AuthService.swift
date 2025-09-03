@@ -57,8 +57,13 @@ final class AuthService: ObservableObject {
     }
 
     @MainActor
-    func signOut() throws {
-        try Auth.auth().signOut()
-        GIDSignIn.sharedInstance.signOut()
+    func signOut() {
+        do {
+            try Auth.auth().signOut()
+            GIDSignIn.sharedInstance.signOut()
+            self.userId = nil
+        } catch {
+            print("Sign out failed:", error.localizedDescription)
+        }
     }
 }
