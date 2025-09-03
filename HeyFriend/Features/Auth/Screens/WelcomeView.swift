@@ -56,7 +56,7 @@ struct WelcomeView: View {
 //                        .foregroundStyle(Color.white.opacity(0.9))
 //                        .multilineTextAlignment(.center)
 //                        .padding(.horizontal, 24)
-                    Text("Voice-first AI that helps you reflect—then surfaces gentle insights after each session.")
+                    Text("Voice-first AI that helps you reflect-then surfaces gentle insights after each session.")
                         .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(Color.white.opacity(0.9))
                         .multilineTextAlignment(.center)
