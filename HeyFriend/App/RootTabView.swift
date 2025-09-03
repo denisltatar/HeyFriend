@@ -42,16 +42,17 @@ struct RootTabView: View {
                 }
             }
         }// do async auth + hello write once when the view appears
-        .task {
-            do {
-                try await AuthService.shared.signInAnonymouslyIfNeeded()
-                if let uid = AuthService.shared.userId {
-//                    try await FirestoreService.shared.writeHello(uid: uid)
-                    print("Firestore OK ✅")
-                }
-            } catch {
-                print("Firebase init error:", error)
-            }
-        }
+//        .task {
+//            #if DEBUG
+//            do {
+//                try await AuthService.shared.signInAnonymouslyIfNeeded()
+//                if let uid = AuthService.shared.userId {
+//                    print("Anon auth OK for DEBUG, uid:", uid)
+//                }
+//            } catch {
+//                print("Anon auth error:", error)
+//            }
+//            #endif
+//        }
     }
 }
