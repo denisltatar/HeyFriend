@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 struct WelcomeView: View {
     @State private var isSigningIn = false
@@ -39,11 +40,23 @@ struct WelcomeView: View {
                 Spacer()
 
                 VStack(spacing: 10) {
+                    Image("AppLogo")   // <- replace "AppLogo" with the name in Assets.xcassets
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)    // adjust size as you like
+                        .clipShape(RoundedRectangle(cornerRadius: 20)) // optional styling
+                        .shadow(radius: 6)
+
                     Text("HeyFriend")
                         .font(.system(size: 40, weight: .bold))
                         .foregroundStyle(.white)
 
-                    Text("Welcome back — let’s get you signed in.")
+//                    Text("Welcome - let's get you signed in!")
+//                        .font(.system(size: 17, weight: .regular))
+//                        .foregroundStyle(Color.white.opacity(0.9))
+//                        .multilineTextAlignment(.center)
+//                        .padding(.horizontal, 24)
+                    Text("Voice-first AI that helps you reflect—then surfaces gentle insights after each session.")
                         .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(Color.white.opacity(0.9))
                         .multilineTextAlignment(.center)
@@ -58,25 +71,23 @@ struct WelcomeView: View {
                         signInWithGoogleTapped()
                     }
 
-                    // Placeholder for Apple (later)
-                    Button {
-                        // TODO: Apple Sign-In later
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "apple.logo")
-                                .font(.system(size: 20, weight: .bold))
-                            Text("Sign in with Apple")
-                                .font(.system(size: 17, weight: .semibold))
-                            Spacer()
+                    // ✅ Native Apple sign-in button
+                    SignInWithAppleButton(.signIn) { request in
+                        AuthService.shared.handleSignInWithAppleRequest(request)
+                    } onCompletion: { result in
+                        Task {
+                            do {
+                                try await AuthService.shared.handleSignInWithAppleCompletion(result)
+                                // No manual navigation; app root will switch to RootTabView on auth change
+                            } catch {
+                                errorText = error.localizedDescription
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .frame(height: 52)
-                        .background(Color.black)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .opacity(0.35) // disabled look for now
                     }
-                    .disabled(true)
+                    .signInWithAppleButtonStyle(.black)   // auto inverts in Dark Mode if you prefer: use .white in dark
+                    .frame(height: 52)
+                    .cornerRadius(10)
+
 
                     if let errorText {
                         Text(errorText)

@@ -26,7 +26,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         if let app = FirebaseApp.app() {
             let opt = app.options
             print("Firebase projectID:", opt.projectID ?? "nil")
-            print("Firebase API key:", opt.apiKey ?? "nil")
+//            print("Firebase API key:", opt.apiKey ?? "nil")
             print("Detected bundleID:", Bundle.main.bundleIdentifier ?? "nil")
             print("\n")
         }
