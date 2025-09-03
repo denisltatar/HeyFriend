@@ -127,20 +127,28 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         lastVoiceTime = Date().timeIntervalSince1970
         
         // 🔽 NEW: open a Firestore session + reset transcript
-//        Task {
-//            do {
+        Task {
+            do {
+                // No need for anonymous sign-in anymore if Google/Apple is required.
 //                try await AuthService.shared.signInAnonymouslyIfNeeded()
-//                if let uid = AuthService.shared.userId {
-//                    let sid = try await FirestoreService.shared.startSession(uid: uid)
-//                    await MainActor.run {
-//                        self.currentSessionId = sid
-//                        self.transcriptLines.removeAll()
-//                    }
-//                }
-//            } catch {
-//                print("Failed to start Firestore session:", error)
-//            }
-//        }
+                
+                // Check if user is signed in by checking userID if it exists
+                guard let uid = AuthService.shared.userId else {
+                    print("No signed-in user; cannot start session.")
+                    return
+                }
+                
+                // Start firebase session
+                let sid = try await FirestoreService.shared.startSession(uid: uid)
+                
+                await MainActor.run {
+                    self.currentSessionId = sid
+                    self.transcriptLines.removeAll()
+                }
+            } catch {
+                print("Failed to start Firestore session:", error)
+            }
+        }
     }
 
     func stopSession() {
@@ -415,6 +423,12 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
         // Build transcript from the local lines we saved (same format you used)
         let transcript = transcriptLines.joined(separator: "\n")
+        
+//        guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+//            isGeneratingSummary = false
+//            summaryError = "No conversation to summarize."
+//            return
+//        }
 
         // Safety: capture session id now
         guard let sid = currentSessionId, let uid = AuthService.shared.userId else {
