@@ -7,10 +7,12 @@
 
 import SwiftUI
 import AuthenticationServices
+import SafariServices
 
 struct WelcomeView: View {
     @State private var isSigningIn = false
     @State private var errorText: String?
+    @State private var showPrivacy = false
 
     var body: some View {
         ZStack {
@@ -97,11 +99,15 @@ struct WelcomeView: View {
                             .padding(.top, 8)
                     }
 
-                    Text("By continuing, you agree to our Terms & Privacy Policy.")
+                    Text("By continuing, you agree to our [Terms & Privacy Policy](https://heyfriend-website.vercel.app/privacy).")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 4)
+                        .foregroundStyle(.secondary) // gray for normal text
+                        .tint(Color(red: 1.0, green: 0.55, blue: 0.0)) // 🍊 brand-orange link
+
+                    
+                    
                 }
                 .padding(20)
                 .background(.ultraThinMaterial)
@@ -130,6 +136,15 @@ struct WelcomeView: View {
             }
             isSigningIn = false
         }
+    }
+    
+    // Not currently used, although can be used in the near future
+    struct SafariView: UIViewControllerRepresentable {
+        let url: URL
+        func makeUIViewController(context: Context) -> SFSafariViewController {
+            SFSafariViewController(url: url)
+        }
+        func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
     }
 }
 
