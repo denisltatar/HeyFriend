@@ -37,6 +37,8 @@
 		7E4617A12E46B4A000EFAA01 /* TextToSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */; };
 		7E4A9FA62E68C8680042CC78 /* InsightsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4A9FA52E68C8680042CC78 /* InsightsViewModel.swift */; };
 		7E4AA3B42E6B497C0011802C /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4AA3B32E6B497C0011802C /* SettingsViewModel.swift */; };
+		7E4AA3BA2E6B73B20011802C /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4AA3B92E6B73B20011802C /* PaywallView.swift */; };
+		7E4AA3BD2E6B74580011802C /* PurchaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4AA3BC2E6B74580011802C /* PurchaseService.swift */; };
 		7E70986A2E67ADCB000A877D /* GoogleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7098692E67ADC8000A877D /* GoogleSignInButton.swift */; };
 		7E70986E2E67AE55000A877D /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E70986D2E67AE4D000A877D /* WelcomeView.swift */; };
 		7E7098702E67AEBC000A877D /* RootPresenterFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E70986F2E67AEB9000A877D /* RootPresenterFinder.swift */; };
@@ -98,6 +100,8 @@
 		7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextToSpeechService.swift; sourceTree = "<group>"; };
 		7E4A9FA52E68C8680042CC78 /* InsightsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModel.swift; sourceTree = "<group>"; };
 		7E4AA3B32E6B497C0011802C /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		7E4AA3B92E6B73B20011802C /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		7E4AA3BC2E6B74580011802C /* PurchaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseService.swift; sourceTree = "<group>"; };
 		7E7098692E67ADC8000A877D /* GoogleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInButton.swift; sourceTree = "<group>"; };
 		7E70986D2E67AE4D000A877D /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		7E70986F2E67AEB9000A877D /* RootPresenterFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPresenterFinder.swift; sourceTree = "<group>"; };
@@ -162,6 +166,7 @@
 		7E0EF3872E555EF900B41643 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				7E4AA3B52E6B737C0011802C /* Paywall */,
 				7E70986B2E67ADE9000A877D /* Auth */,
 				7E0EF3882E555F0F00B41643 /* Sessions */,
 				7E0EF38C2E555F8400B41643 /* Insights */,
@@ -261,6 +266,7 @@
 		7E0EF3982E55609A00B41643 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				7E4AA3BB2E6B74490011802C /* Billing */,
 				7E085C832E60A94D00558D8C /* Database */,
 				7E0EF3992E5560A400B41643 /* Voice */,
 				7E0EF39B2E5560C900B41643 /* Chat */,
@@ -383,6 +389,30 @@
 				7E4AA3B32E6B497C0011802C /* SettingsViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		7E4AA3B52E6B737C0011802C /* Paywall */ = {
+			isa = PBXGroup;
+			children = (
+				7E4AA3B82E6B739C0011802C /* Screens */,
+			);
+			path = Paywall;
+			sourceTree = "<group>";
+		};
+		7E4AA3B82E6B739C0011802C /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				7E4AA3B92E6B73B20011802C /* PaywallView.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+		7E4AA3BB2E6B74490011802C /* Billing */ = {
+			isa = PBXGroup;
+			children = (
+				7E4AA3BC2E6B74580011802C /* PurchaseService.swift */,
+			);
+			path = Billing;
 			sourceTree = "<group>";
 		};
 		7E70986B2E67ADE9000A877D /* Auth */ = {
@@ -552,6 +582,7 @@
 				7E70986A2E67ADCB000A877D /* GoogleSignInButton.swift in Sources */,
 				7E0EF37D2E5555B500B41643 /* RootTabView.swift in Sources */,
 				7E085C892E60AACF00558D8C /* FirestoreService.swift in Sources */,
+				7E4AA3BD2E6B74580011802C /* PurchaseService.swift in Sources */,
 				7E4AA3B42E6B497C0011802C /* SettingsViewModel.swift in Sources */,
 				7E085C872E60AAB800558D8C /* AuthService.swift in Sources */,
 				7E4617962E46979D00EFAA01 /* ChatView.swift in Sources */,
@@ -567,6 +598,7 @@
 				7E4617992E4697B800EFAA01 /* ChatViewModel.swift in Sources */,
 				7E2E491C2E4E4C440021AA2C /* WavyBlobView.swift in Sources */,
 				7E46179C2E4697D500EFAA01 /* TranscriptionService.swift in Sources */,
+				7E4AA3BA2E6B73B20011802C /* PaywallView.swift in Sources */,
 				7E70986E2E67AE55000A877D /* WelcomeView.swift in Sources */,
 				7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */,
 				7E2E491A2E4E4C2D0021AA2C /* RotatingGlowView.swift in Sources */,
