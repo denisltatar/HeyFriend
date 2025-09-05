@@ -36,6 +36,7 @@
 		7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E46179E2E469E6900EFAA01 /* ChatService.swift */; };
 		7E4617A12E46B4A000EFAA01 /* TextToSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */; };
 		7E4A9FA62E68C8680042CC78 /* InsightsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4A9FA52E68C8680042CC78 /* InsightsViewModel.swift */; };
+		7E4AA3B42E6B497C0011802C /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4AA3B32E6B497C0011802C /* SettingsViewModel.swift */; };
 		7E70986A2E67ADCB000A877D /* GoogleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7098692E67ADC8000A877D /* GoogleSignInButton.swift */; };
 		7E70986E2E67AE55000A877D /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E70986D2E67AE4D000A877D /* WelcomeView.swift */; };
 		7E7098702E67AEBC000A877D /* RootPresenterFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E70986F2E67AEB9000A877D /* RootPresenterFinder.swift */; };
@@ -96,6 +97,7 @@
 		7E46179E2E469E6900EFAA01 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
 		7E4617A02E46B49F00EFAA01 /* TextToSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextToSpeechService.swift; sourceTree = "<group>"; };
 		7E4A9FA52E68C8680042CC78 /* InsightsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsViewModel.swift; sourceTree = "<group>"; };
+		7E4AA3B32E6B497C0011802C /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		7E7098692E67ADC8000A877D /* GoogleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleSignInButton.swift; sourceTree = "<group>"; };
 		7E70986D2E67AE4D000A877D /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		7E70986F2E67AEB9000A877D /* RootPresenterFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPresenterFinder.swift; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				7E0EF3912E555FDF00B41643 /* Screens */,
+				7E4AA3B22E6B494B0011802C /* ViewModels */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -370,6 +373,14 @@
 			isa = PBXGroup;
 			children = (
 				7E4A9FA52E68C8680042CC78 /* InsightsViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		7E4AA3B22E6B494B0011802C /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				7E4AA3B32E6B497C0011802C /* SettingsViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -541,6 +552,7 @@
 				7E70986A2E67ADCB000A877D /* GoogleSignInButton.swift in Sources */,
 				7E0EF37D2E5555B500B41643 /* RootTabView.swift in Sources */,
 				7E085C892E60AACF00558D8C /* FirestoreService.swift in Sources */,
+				7E4AA3B42E6B497C0011802C /* SettingsViewModel.swift in Sources */,
 				7E085C872E60AAB800558D8C /* AuthService.swift in Sources */,
 				7E4617962E46979D00EFAA01 /* ChatView.swift in Sources */,
 				7E2E49202E4E4C750021AA2C /* RealisticShadows.swift in Sources */,

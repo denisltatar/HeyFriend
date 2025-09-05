@@ -56,15 +56,19 @@ struct HeyFriendApp: App {
     // inject auth & route
     @StateObject private var auth = AuthService.shared
     
+    // Applying color theme
+    @AppStorage(SettingsKeys.appAppearance) private var appearanceRaw = AppAppearance.system.rawValue
 
     
     var body: some Scene {
+        let appearance = AppAppearance(rawValue: appearanceRaw) ?? AppAppearance.system
+        
         WindowGroup {
             Group {
                 if let user = Auth.auth().currentUser, !user.isAnonymous {
-                    RootTabView()
+                    RootTabView().preferredColorScheme(appearance.colorScheme)
                 } else {
-                    WelcomeView()
+                    WelcomeView().preferredColorScheme(appearance.colorScheme)
                 }
             }.environmentObject(auth)
         }
