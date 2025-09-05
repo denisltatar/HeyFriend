@@ -24,6 +24,9 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.requireBiometricsForInsights) private var requireBiometrics = false
     @AppStorage(SettingsKeys.appAppearance) private var appearanceRaw = AppAppearance.system.rawValue
     
+    // Paywall display
+    @State private var showPaywall = false
+    
     private var appearanceBinding: Binding<AppAppearance> {
         Binding(
             get: { AppAppearance(rawValue: appearanceRaw) ?? .system },
@@ -75,6 +78,7 @@ struct SettingsView: View {
                         // e.g., show a sheet or navigate to a PaywallView()
                         // For now, just haptic feedback or placeholder
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showPaywall = true
                     } label: {
                         Label("Upgrade to Plus", systemImage: "sparkles")
                     }
@@ -151,6 +155,9 @@ struct SettingsView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Settings")
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
 //            .safeAreaInset(edge: .bottom) {
 //                Button(role: .destructive) {
 //                    auth.signOut()
