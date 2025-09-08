@@ -160,9 +160,9 @@
 		7E0EF3862E555EE800B41643 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */,
 				7E46176A2E46925F00EFAA01 /* HeyFriendApp.swift */,
 				7E0EF37C2E5555B500B41643 /* RootTabView.swift */,
+				7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */,
 			);
 			path = App;
 			sourceTree = "<group>";
