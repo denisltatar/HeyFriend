@@ -14,6 +14,9 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var isRecording = false
     @Published var aiResponse: String = ""
     @Published var isTTSSpeaking = false
+    // Loading
+    @Published var isBootingSession = false
+    @Published var isWaitingForReply = true
 
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))!
     private let audioEngine = AVAudioEngine()
@@ -113,6 +116,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     // MARK: - Session lifecycle (continuous)
     func startSession() {
         guard !isRecording else { return }
+        isBootingSession = true
 
         // Use play&record for smooth handoff with TTS
         let session = AVAudioSession.sharedInstance()
@@ -135,6 +139,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                 // Check if user is signed in by checking userID if it exists
                 guard let uid = AuthService.shared.userId else {
                     print("No signed-in user; cannot start session.")
+                    await MainActor.run { self.isBootingSession = false }   // end boot even if we can't start Firestore
                     return
                 }
                 
@@ -144,9 +149,11 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                 await MainActor.run {
                     self.currentSessionId = sid
                     self.transcriptLines.removeAll()
+                    self.isBootingSession = false
                 }
             } catch {
                 print("Failed to start Firestore session:", error)
+                await MainActor.run { self.isBootingSession = false }
             }
         }
     }
@@ -274,6 +281,9 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
          // 🔽 NEW: record the user turn, persist transcript
         appendAndPersist(role: "You", text: userTurn)
+        
+        // User is waiting for a reply
+        isWaitingForReply = true
 
         ChatService.shared.sendMessage(userTurn) { reply in
             DispatchQueue.main.async {
@@ -292,6 +302,38 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         lastVoiceTime = Date().timeIntervalSince1970
     }
     
+    // Send a pre-selected user turn (from SessionsHomeView) as if the user spoke it.
+    func seedAndQuery(_ userTurn: String) {
+        let text = userTurn.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
+        // Avoid the mic hearing the bot while we inject the turn
+        stopRecognition(.forTTS)
+
+        // Record + persist just like a normal committed utterance
+        appendAndPersist(role: "You", text: text)
+        
+        // User is waiting for reply
+        isWaitingForReply = true
+
+        ChatService.shared.sendMessage(text) { reply in
+            DispatchQueue.main.async {
+                let bot = (reply ?? "Sorry, I didn’t catch that. Can you try again?")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                self.aiResponse = bot
+                self.appendAndPersist(role: "HeyFriend", text: bot)
+
+                TextToSpeechService.shared.speak(bot)
+                // onTTSFinish() will resume listening (your existing flow)
+            }
+        }
+
+        // Prep for next live turn
+        utteranceBuffer = ""
+        lastVoiceTime = Date().timeIntervalSince1970
+    }
+
+    
     private func appendAndPersist(role: String, text: String) {
         transcriptLines.append("\(role): \(text)")
         guard let uid = AuthService.shared.userId, let sid = currentSessionId else { return }
@@ -304,6 +346,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     
     @objc private func onTTSStart() {
         isTTSSpeaking = true
+        isWaitingForReply = false   // ✅ stop the spinner now that reply is speaking
         print("[barge] onTTSStart")
         // Pause/stop recognition so the bot doesn't hear itself
         stopRecognition(.forTTS)
@@ -395,6 +438,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
     @objc private func onTTSFinish() {
         isTTSSpeaking = false
+        isWaitingForReply = false   // ensuring our reply message to user doesn't show more than once!
         print("[barge] onTTSFinish (bargeRequested=\(bargeRequested))")
         removeBargeInTap()
         // Resume listening for the next turn
@@ -464,7 +508,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         }
     }
 
-
+    
     
     
 }

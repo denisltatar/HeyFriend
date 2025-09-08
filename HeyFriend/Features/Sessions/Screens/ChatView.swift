@@ -18,6 +18,15 @@ struct ChatView: View {
     // Summaries
     @State private var showingSummary = false
     
+    // Suggested prompt entry if user decides to use one...
+    @AppStorage("HF_initialPrompt") private var initialPrompt: String = ""
+
+    // Suggestion mode flags :)
+    @State private var isSeededStart = false            // true only when entering via a suggestion
+    @State private var showSeededPreparing = false      // controls the one-time overlay
+    @State private var seededOverlayConsumed = false    // lock so it never appears again
+    
+    
     // Amplitude for orb to use to "breathe"
     private var orbAmplitude: CGFloat {
         let mic = viewModel.rmsLevel        // 0…1 from mic
@@ -41,6 +50,40 @@ struct ChatView: View {
         // Hard clamp so it can’t explode
         return min(max(coupled, 24.0), 72.0)
     }
+    
+    private func seedFromSuggestionIfNeeded() {
+        let seed = initialPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !seed.isEmpty else { return }
+        
+        // Mark this path as "seeded" and show the one-time overlay
+        isSeededStart = true
+        seededOverlayConsumed = false
+        showSeededPreparing = true
+        
+        // Ensure a live session (creates Firestore sid async in the VM)
+        if !viewModel.isRecording {
+            viewModel.startSession()
+        }
+        
+        // Wait briefly for a session id; then send the seed
+        let start = DispatchTime.now()
+        // Give startSession a tiny beat to establish the session id
+        func trySend() {
+            if viewModel.currentSessionId != nil {
+                viewModel.seedAndQuery(seed)
+                initialPrompt = ""                      // consume once
+            } else {
+                let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000
+                if elapsedMs < 600 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: trySend)
+                } else {
+                    viewModel.seedAndQuery(seed)        // fallback so user isn’t stuck
+                    initialPrompt = ""
+                }
+            }
+        }
+        DispatchQueue.main.async(execute: trySend)
+    }
 
     var body: some View {
         ZStack {
@@ -48,6 +91,24 @@ struct ChatView: View {
             Color(.systemBackground)
                 .ignoresSafeArea()
             
+            // Used for suggestion mode ONLY
+            // One-time overlay: only for suggestion starts, only at the very beginning
+            if isSeededStart && showSeededPreparing && !seededOverlayConsumed {
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text("Preparing your session…")
+                        .font(.system(.footnote, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .shadow(radius: 10)
+                )
+                .transition(.opacity)
+                .zIndex(2)
+            }
             
 
             VStack(spacing: 12) {
@@ -77,7 +138,11 @@ struct ChatView: View {
                 OrbView(configuration: makeOrbConfig(speed: quantizedSpeed),
                         amplitude: orbAmplitude)
                     .frame(width: 176, height: 176)
-                    .onAppear { smoothedSpeed = targetSpeed; quantizedSpeed = targetSpeed }
+                    .onAppear {
+                        smoothedSpeed = targetSpeed;
+                        quantizedSpeed = targetSpeed
+                    }
+                    .onAppear { seedFromSuggestionIfNeeded() }
                     .onChange(of: targetSpeed) { new in
                         let alpha = 0.18
                         smoothedSpeed += (new - smoothedSpeed) * alpha
@@ -180,8 +245,20 @@ struct ChatView: View {
                 .navigationTitle("Settings")
                 .navigationBarTitleDisplayMode(.inline)
             }
+        // Suggestion Mode: When TTS starts for the first seeded reply, hide overlay and lock it off
         }.onChange(of: viewModel.isTTSSpeaking) { speaking in
-            if speaking { lastSpokeAt = Date() }
+            if speaking && isSeededStart && !seededOverlayConsumed {
+                lastSpokeAt = Date()
+                showSeededPreparing = false      // hide overlay
+                seededOverlayConsumed = true // lock it so it doesn’t show again
+            }
+        }
+        // Safety: if for some reason TTS can’t start but text arrives, hide overlay then
+        .onChange(of: viewModel.aiResponse) { text in
+            if !text.isEmpty && isSeededStart && !seededOverlayConsumed {
+                showSeededPreparing = false
+                seededOverlayConsumed = true
+            }
         }.sheet(isPresented: $showingSummary) {
             if let s = viewModel.currentSummary {
                 SummaryDetailView(summary: s)
@@ -317,22 +394,22 @@ struct ChatView: View {
 
 private struct MessageCard: View {
     enum Tone { case user, ai }
-
+    
     let role: String
     let text: String
     let alignment: HorizontalAlignment
     let tone: Tone
-
+    
     var body: some View {
         VStack(alignment: alignment, spacing: 6) {
             Text(role)
                 .font(.system(.caption, design: .rounded))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
-
+            
             HStack(alignment: .bottom) {
                 if alignment == .trailing { Spacer(minLength: 48) }
-
+                
                 Text(text)
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(.primary)
@@ -348,7 +425,7 @@ private struct MessageCard: View {
                     )
                     .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 6)
                     .frame(maxWidth: 640, alignment: .leading)
-
+                
                 if alignment == .leading { Spacer(minLength: 48) }
             }
         }
