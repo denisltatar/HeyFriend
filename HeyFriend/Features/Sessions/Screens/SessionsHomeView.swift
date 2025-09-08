@@ -81,7 +81,7 @@ struct SessionsHomeView: View {
                         limit: entitlements.freeLimit,
                         onUpgradeTap: { showPaywall = true }
                     )
-                    .padding(.horizontal, 17)            // 👈 matches your other “section” inset
+                    .padding(.horizontal, 17)
                     .padding(.top, 4)
                 }
                 
