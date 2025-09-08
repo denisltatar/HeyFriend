@@ -8,18 +8,27 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Styled Insights (History-only for now)
 struct InsightsView: View {
     @StateObject private var vm = InsightsViewModel()
+    @State private var didLoadOnce = false
+
+    @StateObject private var entitlements = EntitlementsViewModel()
+    @State private var showPaywall = false
 
     var body: some View {
-        Section("This Week at a Glance") {
-            Text("Mood trend and top emotion will appear here.")
-        }
         NavigationStack {
-            
             List {
-                
+                Section {
+                    FreeSessionsPill(
+                        isPlus: entitlements.isPlus,
+                        remaining: entitlements.remaining,
+                        limit: entitlements.freeLimit,
+                        onUpgradeTap: { showPaywall = true }
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                }
+
                 Section {
                     if vm.rows.isEmpty && !vm.isLoading && vm.error == nil {
                         EmptyHistoryState()
@@ -47,8 +56,18 @@ struct InsightsView: View {
                         .padding(.top, 6)
                 }
             }
+            // Start entitlements once
+            .onAppear { entitlements.start() }
+
+            // 🚫 Do NOT attach the sheet here anymore
+            // .sheet(isPresented: $showPaywall) { ... }
+
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+
+            // ✅ Prevent pull/overscroll while the sheet is up
+            .scrollDisabled(showPaywall)
+
             .background(
                 LinearGradient(colors: [
                     Color(.systemBackground),
@@ -63,8 +82,18 @@ struct InsightsView: View {
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
                 }
             }
+
+            // Keep refresh, but it will NOT fire when scrolling is disabled
             .refreshable { await vm.loadHistory() }
-            .task { await vm.loadHistory() }
+
+            // Load once (no “refresh look” after dismiss)
+            .task {
+                if !didLoadOnce {
+                    didLoadOnce = true
+                    await vm.loadHistory()
+                }
+            }
+
             .navigationTitle("Insights")
             .sheet(item: $vm.selectedSummary) { sum in
                 SummaryDetailView(summary: sum)
@@ -75,8 +104,15 @@ struct InsightsView: View {
                 Text(vm.error ?? "")
             }
         }
+        // ✅ Attach the paywall sheet OUTSIDE the Navigation/List
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .presentationBackgroundInteraction(.disabled)
+        }
+        .onDisappear { entitlements.stop() }
     }
 }
+
 
 // MARK: - Components
 

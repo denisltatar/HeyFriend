@@ -7,13 +7,19 @@
 
 import Foundation
 import SwiftUI
+import FirebaseAuth
 
 struct SessionsHomeView: View {
     @State private var goToChat = false
-    @State private var isPressed = false
+    @State private var isStarting = false
+    @State private var errorText: String?
 
     // Pass the selected suggestion to ChatView via AppStorage
     @AppStorage("HF_initialPrompt") private var initialPrompt: String = ""
+    
+    // Trial/Plus state
+    @StateObject private var entitlements = EntitlementsViewModel()
+    @State private var showPaywall = false
 
     // MARK: - Suggestions
     struct Suggestion: Identifiable, Hashable {
@@ -67,6 +73,19 @@ struct SessionsHomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Sessions-left / Plus pill
+                Section {
+                    FreeSessionsPill(
+                        isPlus: entitlements.isPlus,
+                        remaining: entitlements.remaining,
+                        limit: entitlements.freeLimit,
+                        onUpgradeTap: { showPaywall = true }
+                    )
+                    .padding(.horizontal, 17)
+                    .padding(.top, 4)
+                }
+                
+                
                 // Header
                 Text("Talk it out whenever you’re ready.")
                     .multilineTextAlignment(.center)
@@ -101,11 +120,11 @@ struct SessionsHomeView: View {
                             radius: 10, x: 0, y: 6)
                 }
                 .buttonStyle(.plain)
-                .scaleEffect(isPressed ? 0.98 : 1.0)
-                .animation(.easeOut(duration: 0.12), value: isPressed)
+                .scaleEffect(isStarting ? 0.98 : 1.0)
+                .animation(.easeOut(duration: 0.12), value: isStarting)
                 .simultaneousGesture(DragGesture(minimumDistance: 0)
-                    .onChanged { _ in isPressed = true }
-                    .onEnded { _ in isPressed = false }
+                    .onChanged { _ in isStarting = true }
+                    .onEnded { _ in isStarting = false }
                 )
                 .padding(.horizontal)
 
@@ -196,6 +215,9 @@ struct SessionsHomeView: View {
             }
         }
         .navigationTitle("Sessions")
+        // Entitlements
+        .onAppear { entitlements.start() }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
         // Programmatic navigation
         .background(
             NavigationLink(
@@ -209,10 +231,37 @@ struct SessionsHomeView: View {
         )
     }
 
-    // MARK: - Helpers
+    // MARK: - Free plan gating (navigation only)
     private func start(with prompt: String) {
-        initialPrompt = prompt // ChatView should read this and consume it
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        goToChat = true
+        Task {
+            guard let uid = AuthService.shared.userId ?? Auth.auth().currentUser?.uid else {
+                errorText = "Not signed in."
+                return
+            }
+            isStarting = true
+            defer { isStarting = false }
+            
+            do {
+                // Try to start while enforcing entitlements
+                let sid = try await FirestoreService.shared.startSessionRespectingEntitlements(uid: uid)
+                // Pass prompt for ChatView to consume
+                initialPrompt = prompt
+                // Navigate to chat (if you need sid here, store it in AppStorage/VM)
+                goToChat = true
+                print("Session started:", sid)
+            } catch let e as SessionStartError {
+                switch e {
+                case .freeLimitReached:
+                    // Show paywall
+                    showPaywall = true
+                case .notSignedIn:
+                    errorText = "Please sign in."
+                }
+            } catch {
+                errorText = error.localizedDescription
+                print("Failed to start session:", error)
+            }
+        }
     }
 }

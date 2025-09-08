@@ -19,6 +19,9 @@ struct SettingsView: View {
     @EnvironmentObject var auth: AuthService
     @Environment(\.requestReview) private var requestReview
     @Environment(\.openURL) private var openURL
+    
+    // Trial/Plus state
+    @StateObject private var entitlements = EntitlementsViewModel()
 
     // Persisted settings
     @AppStorage(SettingsKeys.requireBiometricsForInsights) private var requireBiometrics = false
@@ -84,7 +87,18 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.primary)
+                    
+//                    FreeSessionsPill(
+//                        isPlus: entitlements.isPlus,
+//                        remaining: entitlements.remaining,
+//                        limit: entitlements.freeLimit,
+//                        onUpgradeTap: { showPaywall = true }
+//                    )
+//                    .padding(.horizontal, 17)
+//                    .padding(.top, 4)
                 }
+                
+                
 
                 // 📣 Support & Community
                 Section("Support & Policies") {
