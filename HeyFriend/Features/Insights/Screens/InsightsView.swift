@@ -21,12 +21,12 @@ struct InsightsView: View {
             Text("Mood trend and top emotion will appear here.")
         }
         NavigationStack {
-            
             List {
                 Section {
                     FreeSessionsPill(
                         isPlus: entitlements.isPlus,
                         remaining: entitlements.remaining,
+                        limit: entitlements.freeLimit,
                         onUpgradeTap: { showPaywall = true }
                     )
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))

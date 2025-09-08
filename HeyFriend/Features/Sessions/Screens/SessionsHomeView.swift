@@ -78,10 +78,11 @@ struct SessionsHomeView: View {
                     FreeSessionsPill(
                         isPlus: entitlements.isPlus,
                         remaining: entitlements.remaining,
+                        limit: entitlements.freeLimit,
                         onUpgradeTap: { showPaywall = true }
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowSeparator(.hidden)
+                    .padding(.horizontal, 17)            // 👈 matches your other “section” inset
+                    .padding(.top, 4)
                 }
                 
                 
