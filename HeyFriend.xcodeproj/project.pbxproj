@@ -48,6 +48,8 @@
 		7E73B9172E4D9617001BB81E /* LiquidSwirlOrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E73B9162E4D9617001BB81E /* LiquidSwirlOrbView.swift */; };
 		7EA134122E5647E6004109B9 /* SessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA134112E5647E6004109B9 /* SessionSummary.swift */; };
 		7EA134142E564804004109B9 /* SummaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA134132E564804004109B9 /* SummaryProvider.swift */; };
+		7EB0A7AD2E6F67F80090AD40 /* EntitlementsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB0A7AC2E6F67F80090AD40 /* EntitlementsViewModel.swift */; };
+		7EB0A7B12E6F69830090AD40 /* FreeSessionsPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB0A7B02E6F69830090AD40 /* FreeSessionsPill.swift */; };
 		7EDF910C2E622CBA00F3A62F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
@@ -110,6 +112,8 @@
 		7E73B9162E4D9617001BB81E /* LiquidSwirlOrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidSwirlOrbView.swift; sourceTree = "<group>"; };
 		7EA134112E5647E6004109B9 /* SessionSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummary.swift; sourceTree = "<group>"; };
 		7EA134132E564804004109B9 /* SummaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryProvider.swift; sourceTree = "<group>"; };
+		7EB0A7AC2E6F67F80090AD40 /* EntitlementsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementsViewModel.swift; sourceTree = "<group>"; };
+		7EB0A7B02E6F69830090AD40 /* FreeSessionsPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeSessionsPill.swift; sourceTree = "<group>"; };
 		7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -251,6 +255,7 @@
 			children = (
 				7E70986F2E67AEB9000A877D /* RootPresenterFinder.swift */,
 				7E7098692E67ADC8000A877D /* GoogleSignInButton.swift */,
+				7EB0A7B02E6F69830090AD40 /* FreeSessionsPill.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -395,6 +400,7 @@
 			isa = PBXGroup;
 			children = (
 				7E4AA3B82E6B739C0011802C /* Screens */,
+				7EB0A7AB2E6F67D20090AD40 /* ViewModels */,
 			);
 			path = Paywall;
 			sourceTree = "<group>";
@@ -429,6 +435,14 @@
 				7E70986D2E67AE4D000A877D /* WelcomeView.swift */,
 			);
 			path = Screens;
+			sourceTree = "<group>";
+		};
+		7EB0A7AB2E6F67D20090AD40 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				7EB0A7AC2E6F67F80090AD40 /* EntitlementsViewModel.swift */,
+			);
+			path = ViewModels;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -590,6 +604,7 @@
 				7E0EF3812E55560800B41643 /* SettingsView.swift in Sources */,
 				7E085C852E60A96700558D8C /* FirebaseTest.swift in Sources */,
 				7E2E49182E4E4C040021AA2C /* OrbView.swift in Sources */,
+				7EB0A7AD2E6F67F80090AD40 /* EntitlementsViewModel.swift in Sources */,
 				7EA134142E564804004109B9 /* SummaryProvider.swift in Sources */,
 				7E2E491E2E4E4C5E0021AA2C /* ParticlesView.swift in Sources */,
 				7E4A9FA62E68C8680042CC78 /* InsightsViewModel.swift in Sources */,
@@ -600,6 +615,7 @@
 				7E46179C2E4697D500EFAA01 /* TranscriptionService.swift in Sources */,
 				7E4AA3BA2E6B73B20011802C /* PaywallView.swift in Sources */,
 				7E70986E2E67AE55000A877D /* WelcomeView.swift in Sources */,
+				7EB0A7B12E6F69830090AD40 /* FreeSessionsPill.swift in Sources */,
 				7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */,
 				7E2E491A2E4E4C2D0021AA2C /* RotatingGlowView.swift in Sources */,
 				7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */,

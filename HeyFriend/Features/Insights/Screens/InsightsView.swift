@@ -11,6 +11,10 @@ import SwiftUI
 // MARK: - Styled Insights (History-only for now)
 struct InsightsView: View {
     @StateObject private var vm = InsightsViewModel()
+    
+    // Useful to free trial
+    @StateObject private var entitlements = EntitlementsViewModel()
+    @State private var showPaywall = false
 
     var body: some View {
         Section("This Week at a Glance") {
@@ -19,6 +23,15 @@ struct InsightsView: View {
         NavigationStack {
             
             List {
+                Section {
+                    FreeSessionsPill(
+                        isPlus: entitlements.isPlus,
+                        remaining: entitlements.remaining,
+                        onUpgradeTap: { showPaywall = true }
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                }
                 
                 Section {
                     if vm.rows.isEmpty && !vm.isLoading && vm.error == nil {
@@ -47,6 +60,9 @@ struct InsightsView: View {
                         .padding(.top, 6)
                 }
             }
+            // Free trial be visible to user
+            .onAppear { entitlements.start() }
+            .sheet(isPresented: $showPaywall) { PaywallView() }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(
@@ -75,6 +91,11 @@ struct InsightsView: View {
                 Text(vm.error ?? "")
             }
         }
+        .sheet(isPresented: $showPaywall) {
+                   PaywallView()
+        }
+        .onAppear { entitlements.start() }
+        .onDisappear { entitlements.stop() }
     }
 }
 
