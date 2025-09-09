@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7E01B66A2E707ED0003FFC6C /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E01B6692E707ED0003FFC6C /* StoreKit.framework */; };
+		7E01B66C2E708165003FFC6C /* StoreKit.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 7E01B66B2E708165003FFC6C /* StoreKit.storekit */; };
+		7E01B66E2E708C31003FFC6C /* EntitlementSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E01B66D2E708C31003FFC6C /* EntitlementSync.swift */; };
 		7E085C7E2E60A86E00558D8C /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 7E085C7D2E60A86E00558D8C /* FirebaseAuth */; };
 		7E085C802E60A86E00558D8C /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7E085C7F2E60A86E00558D8C /* FirebaseCore */; };
 		7E085C822E60A86E00558D8C /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 7E085C812E60A86E00558D8C /* FirebaseFirestore */; };
@@ -71,6 +74,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		7E01B6692E707ED0003FFC6C /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		7E01B66B2E708165003FFC6C /* StoreKit.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = StoreKit.storekit; sourceTree = "<group>"; };
+		7E01B66D2E708C31003FFC6C /* EntitlementSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementSync.swift; sourceTree = "<group>"; };
 		7E085C842E60A96700558D8C /* FirebaseTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseTest.swift; sourceTree = "<group>"; };
 		7E085C862E60AAB800558D8C /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		7E085C882E60AACF00558D8C /* FirestoreService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirestoreService.swift; sourceTree = "<group>"; };
@@ -125,6 +131,7 @@
 				7E7098752E67B28F000A877D /* GoogleSignInSwift in Frameworks */,
 				7E085C802E60A86E00558D8C /* FirebaseCore in Frameworks */,
 				7E7098732E67B28F000A877D /* GoogleSignIn in Frameworks */,
+				7E01B66A2E707ED0003FFC6C /* StoreKit.framework in Frameworks */,
 				7E085C7E2E60A86E00558D8C /* FirebaseAuth in Frameworks */,
 				7E085C822E60A86E00558D8C /* FirebaseFirestore in Frameworks */,
 			);
@@ -147,6 +154,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7E01B6682E707ED0003FFC6C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7E01B6692E707ED0003FFC6C /* StoreKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		7E085C832E60A94D00558D8C /* Database */ = {
 			isa = PBXGroup;
 			children = (
@@ -317,6 +332,7 @@
 				7E4617692E46925F00EFAA01 /* HeyFriend */,
 				7E46177A2E46926100EFAA01 /* HeyFriendTests */,
 				7E4617842E46926200EFAA01 /* HeyFriendUITests */,
+				7E01B6682E707ED0003FFC6C /* Frameworks */,
 				7E4617682E46925F00EFAA01 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -334,6 +350,7 @@
 		7E4617692E46925F00EFAA01 /* HeyFriend */ = {
 			isa = PBXGroup;
 			children = (
+				7E01B66B2E708165003FFC6C /* StoreKit.storekit */,
 				7E7098782E67C022000A877D /* HeyFriend.entitlements */,
 				7E4617702E46926100EFAA01 /* Preview Content */,
 				7E46179D2E4698C000EFAA01 /* Info.plist */,
@@ -417,6 +434,7 @@
 			isa = PBXGroup;
 			children = (
 				7E4AA3BC2E6B74580011802C /* PurchaseService.swift */,
+				7E01B66D2E708C31003FFC6C /* EntitlementSync.swift */,
 			);
 			path = Billing;
 			sourceTree = "<group>";
@@ -560,6 +578,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E01B66C2E708165003FFC6C /* StoreKit.storekit in Resources */,
 				7E4617722E46926100EFAA01 /* Preview Assets.xcassets in Resources */,
 				7E46176F2E46926100EFAA01 /* Assets.xcassets in Resources */,
 				7E7098772E67B5BE000A877D /* Assets.xcassets in Resources */,
@@ -616,6 +635,7 @@
 				7E4AA3BA2E6B73B20011802C /* PaywallView.swift in Sources */,
 				7E70986E2E67AE55000A877D /* WelcomeView.swift in Sources */,
 				7EB0A7B12E6F69830090AD40 /* FreeSessionsPill.swift in Sources */,
+				7E01B66E2E708C31003FFC6C /* EntitlementSync.swift in Sources */,
 				7E46176B2E46925F00EFAA01 /* HeyFriendApp.swift in Sources */,
 				7E2E491A2E4E4C2D0021AA2C /* RotatingGlowView.swift in Sources */,
 				7E46179F2E469E6900EFAA01 /* ChatService.swift in Sources */,

@@ -59,6 +59,8 @@ struct HeyFriendApp: App {
     // Applying color theme
     @AppStorage(SettingsKeys.appAppearance) private var appearanceRaw = AppAppearance.system.rawValue
 
+    // ⬇️ Added this to refresh when app becomes active
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some Scene {
         let appearance = AppAppearance(rawValue: appearanceRaw) ?? AppAppearance.system
@@ -71,6 +73,15 @@ struct HeyFriendApp: App {
                     WelcomeView().preferredColorScheme(appearance.colorScheme)
                 }
             }.environmentObject(auth)
+            // ⬇️ ADDED: initial entitlement sync + start background listener
+           .task { EntitlementSync.shared.start() }
+
+           // ⬇️ ADDED: refresh when app returns to foreground
+           .onChange(of: scenePhase) { phase in
+               if phase == .active {
+                   Task { await EntitlementSync.shared.refresh() }
+               }
+           }
         }
     } 
 }

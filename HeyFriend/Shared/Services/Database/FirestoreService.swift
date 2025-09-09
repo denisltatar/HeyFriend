@@ -31,6 +31,10 @@ final class FirestoreService {
     private func insightSummariesRef(_ uid: String) -> CollectionReference {
         userRef(uid).collection("insight_summaries")
     }
+    
+    private func entitlementsRef(_ uid: String) -> DocumentReference {
+        db.collection("users").document(uid).collection("meta").document("entitlements")
+    }
 
     // MARK: - Lifecycle
     func startSession(uid: String) async throws -> String {
@@ -111,12 +115,15 @@ final class FirestoreService {
         var plan: String = "free"      // "free" or "plus"
         var freeSessionsUsed: Int = 0
         var freeLimit: Int = 4
-        var updatedAt: Timestamp = Timestamp(date: Date())
+        
+        // new fields (all optional so nothing breaks if missing)
+        var store: String? = nil                   // e.g., "appstore"
+        var productId: String? = nil               // e.g., "com.heyfriend.plus.monthly"
+        var originalTransactionId: String? = nil   // stringified
+        var expiresAt: Timestamp? = nil            // when sub expires (or nil)
+        var updatedAt: Timestamp? = nil            // server-set on writes
     }
-
-    private func entitlementsRef(_ uid: String) -> DocumentReference {
-        db.collection("users").document(uid).collection("meta").document("entitlements")
-    }
+    
 
     // MVP-safe (non-transactional): create entitlements doc if missing.
     func ensureEntitlements(uid: String, defaultLimit: Int = 4) async throws {
@@ -129,10 +136,9 @@ final class FirestoreService {
 
     // Listen for entitlement changes (plan/usage).
     func observeEntitlements(uid: String, onChange: @escaping (EntitlementsDTO?) -> Void) -> ListenerRegistration {
-        entitlementsRef(uid).addSnapshotListener { snap, _ in
+        return entitlementsRef(uid).addSnapshotListener { snap, _ in
             guard let data = try? snap?.data(as: EntitlementsDTO.self) else {
-                onChange(nil)
-                return
+                onChange(nil); return
             }
             onChange(data)
         }
@@ -174,16 +180,40 @@ final class FirestoreService {
         }
     }
 
-
-    func setPlus(uid: String) async throws {
-        try await entitlementsRef(uid).setData([
+    // When a subscription is ACTIVE
+    func setPlus(uid: String,
+                 productId: String,
+                 originalTransactionId: String,
+                 expiresAt: Date?) async throws {
+        var payload: [String: Any] = [
             "plan": "plus",
+            "store": "appstore",
+            "productId": productId,
+            "originalTransactionId": originalTransactionId,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        if let expiresAt {
+            payload["expiresAt"] = Timestamp(date: expiresAt)
+        } else {
+            // remove if previously set
+            payload["expiresAt"] = FieldValue.delete()
+        }
+        try await entitlementsRef(uid).setData(payload, merge: true)
+    }
+    
+    // When there is NO active subscription
+    func setFree(uid: String) async throws {
+        try await entitlementsRef(uid).setData([
+            "plan": "free",
+            // clear sub metadata so the document tells the truth
+            "store": FieldValue.delete(),
+            "productId": FieldValue.delete(),
+            "originalTransactionId": FieldValue.delete(),
+            "expiresAt": FieldValue.delete(),
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true)
     }
     
-    
-
     @discardableResult
     func startSessionRespectingEntitlements(uid: String) async throws -> String {
         // Read current entitlements (create if missing)
@@ -209,6 +239,8 @@ final class FirestoreService {
         }
     }
 
-
+    
+    
+    
 }
 

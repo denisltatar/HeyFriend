@@ -1,0 +1,145 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "AB6D5C98",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6752298724",
+    "_developerTeamID" : "L7C4H63L7Z",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 779125095.85241604,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21776835",
+      "localizations" : [
+
+      ],
+      "name" : "HeyFriend Plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6752301007",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Monthly subscription to access HeyFriend Plus",
+              "displayName" : "HeyFriend Plus Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.heyfriend.plus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "HeyFriend Plus Monthly",
+          "subscriptionGroupID" : "21776835",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "59.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6752301097",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "com.heyfriend.plus.yearly",
+              "displayName" : "HeyFriend Plus Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.heyfriend.plus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "HeyFriend Plus Yearly",
+          "subscriptionGroupID" : "21776835",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
