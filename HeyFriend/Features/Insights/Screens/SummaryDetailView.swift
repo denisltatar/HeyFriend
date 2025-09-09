@@ -68,7 +68,7 @@ struct SummaryDetailView: View {
             .navigationTitle("Summary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button("My Insights") { dismiss() } }
             }
         }
     }
