@@ -69,9 +69,30 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
             synth.stopSpeaking(at: .immediate)
             // delegate will post finish
         }
+        restoreVoiceChatMode()
+    }
+    
+    // MARK: - Speaker mode - making the speaker louder for users
+    
+    private func enterSpeakerPlaybackMode() {
+        let session = AVAudioSession.sharedInstance()
+        // Stay in .playAndRecord so input stays valid for barge-in
+        // Just relax the processing and force speaker
+        try? session.setMode(.default) // drop AEC/AGC of .voiceChat while speaking
+        try? session.overrideOutputAudioPort(.speaker)
+        // No setActive(false) here; don’t tear down the engine mid-TTS
+    }
+
+    private func restoreVoiceChatMode() {
+        let session = AVAudioSession.sharedInstance()
+            // Return to your original mic-friendly profile
+            try? session.setMode(.voiceChat)
+            // Keep .defaultToSpeaker from your initial setCategory in the VM
+            // Don’t call setActive(false) here either
     }
 
     // MARK: - OpenAI TTS
+    
     // Documentation - https://platform.openai.com/docs/guides/text-to-speech
     private func speakWithOpenAI(_ text: String, apiKey: String) {
         // Fetch synthesized audio off the main thread
@@ -82,7 +103,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                     let model: String = "gpt-4o-mini-tts"
 //                    let model: String = "gpt-4o-mini-tts-1"
 //                    let model: String = "gpt-4o-tts"
-                    let voice: String = "echo" // change to "verse", etc. if you like
+                    let voice: String = "echo" // voice change option
                     /* Options for voices:
                      alloy
                      ash
@@ -96,7 +117,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                      shimmer
                      */
                     let input: String
-                    let format: String = "aac"  // "aac" | "wav" | "opus" also ok
+                    let format: String = "aac"  // "m4a/mp3" | "aac" | "wav" | "opus" also ok
                 }
 
                 var req = URLRequest(url: URL(string: "https://api.openai.com/v1/audio/speech")!)
@@ -122,11 +143,15 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                 // Start playback on main
                 try await MainActor.run {
                     do {
+                        // Configure loudspeaker session for TTS playback
+                        self.enterSpeakerPlaybackMode()
+                        
                         // NOTE: Your ChatViewModel already configures AVAudioSession
                         let newPlayer = try AVAudioPlayer(contentsOf: fileURL)
                         newPlayer.delegate = self
                         newPlayer.isMeteringEnabled = true
                         newPlayer.prepareToPlay()
+                        newPlayer.volume = 1.0  // 🔊 ensure full-scale output
 
                         self.playbackQueue.sync {
                             self.player?.stop()
@@ -156,12 +181,16 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
     // MARK: - Apple TTS fallback
 
     private func speakWithApple(_ text: String) {
+        // Configure loudspeaker session for TTS playback
+        enterSpeakerPlaybackMode()
+        
         let u = AVSpeechUtterance(string: text)
         u.voice = bestNaturalEnglishVoice()
         u.rate = 0.45
         u.pitchMultiplier = 1.05
         u.postUtteranceDelay = 0.05
         u.prefersAssistiveTechnologySettings = true
+        u.volume = 1.0  // 🔊 explicit max
 
         isSpeaking = true
         NotificationCenter.default.post(name: .ttsDidStart, object: nil)
@@ -204,10 +233,13 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
     func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish _: AVSpeechUtterance) {
         isSpeaking = false
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
+        restoreVoiceChatMode()
+
     }
     func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel _: AVSpeechUtterance) {
         isSpeaking = false
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
+        restoreVoiceChatMode()
     }
 
     // OpenAI playback delegate
@@ -215,6 +247,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
         isSpeaking = false
         stopMetering()
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
+        restoreVoiceChatMode()
         playbackQueue.sync { self.player = nil }
     }
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
@@ -222,6 +255,7 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
         isSpeaking = false
         stopMetering()
         NotificationCenter.default.post(name: .ttsDidFinish, object: nil)
+        restoreVoiceChatMode()
         playbackQueue.sync { self.player = nil }
     }
     
