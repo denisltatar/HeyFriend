@@ -68,13 +68,25 @@ struct HeyFriendApp: App {
         WindowGroup {
             Group {
                 if let user = Auth.auth().currentUser, !user.isAnonymous {
+//                if let user = Auth.auth().currentUser {
                     RootTabView().preferredColorScheme(appearance.colorScheme)
                 } else {
                     WelcomeView().preferredColorScheme(appearance.colorScheme)
                 }
             }.environmentObject(auth)
+            
+            // 👇 First ensure there is a user (anon if needed), THEN start entitlement sync
+//            .task {
+//                if AuthService.shared.userId == nil {
+//                    try? await AuthService.shared.signInAnonymouslyIfNeeded()
+//                }
+//                EntitlementSync.shared.start()
+//                await EntitlementSync.shared.refresh()
+//            }
+            
             // ⬇️ ADDED: initial entitlement sync + start background listener
            .task { EntitlementSync.shared.start() }
+
 
            // ⬇️ ADDED: refresh when app returns to foreground
            .onChange(of: scenePhase) { phase in

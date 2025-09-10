@@ -109,6 +109,26 @@ final class FirestoreService {
         ], merge: true)
     }
     
+    // MARK: - Range queries for Insights
+
+    func listSessionsInRange(uid: String, start: Date, end: Date) async throws -> [QueryDocumentSnapshot] {
+        let snap = try await sessionsRef(uid)
+            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: start))
+            .whereField("createdAt", isLessThanOrEqualTo: Timestamp(date: end))
+            .order(by: "createdAt", descending: false)
+            .getDocuments()
+        return snap.documents
+    }
+
+    func listInsightSummariesInRange(uid: String, start: Date, end: Date) async throws -> [QueryDocumentSnapshot] {
+        let snap = try await insightSummariesRef(uid)
+            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: start))
+            .whereField("createdAt", isLessThanOrEqualTo: Timestamp(date: end))
+            .order(by: "createdAt", descending: false)
+            .getDocuments()
+        return snap.documents
+    }
+    
     
     // MARK: - Entitlements
     struct EntitlementsDTO: Codable {

@@ -125,15 +125,7 @@ struct InsightsView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Header + Range Selector
-                Section {
-                    InsightsHeader(selected: $selectedRange)
-//                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-//                        .padding(.horizontal, )
-                }
-
+                
                 // Free / Plus pill
                 // Show pill ONLY if not Plus
                 if !entitlements.isPlus {
@@ -149,6 +141,15 @@ struct InsightsView: View {
                     }
                 }
                 
+                // Header + Range Selector
+                Section {
+                    InsightsHeader(selected: $selectedRange)
+//                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+//                        .padding(.horizontal, )
+                }
+
                 // Tone Card Trends
 //                Section {
 //                    ToneTrendsCard(
@@ -160,44 +161,30 @@ struct InsightsView: View {
 //                        weekSeries: [0.26, 0.31, 0.28, 0.40, 0.38, 0.45, 0.47] // sample data
 //                    )
 //                }
+                
+                
                 Section {
-                    // Example: 3–6 tones. Values must be 0...1 (normalized).
-                    let toneOrder = ["Calm","Hopeful","Reflective","Anxious","Stressed"]
+                    let toneOrder = ToneBucket.allCases.map(\.rawValue)
 
-                    // Build points from your data (0…1 values). Missing ones are fine.
-                    let tonePoints: [TonePoint] = [
-                        .init(label: "Calm",       value: 0.5),
-                        .init(label: "Hopeful",    value: 0.8),
-                        .init(label: "Reflective", value: 0.9),
-                        .init(label: "Anxious",    value: 0.6),
-                        .init(label: "Stressed",   value: 0.7)
-                    ]
-
-                    VStack(alignment: .leading, spacing: 7) {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("Tone Radar")
                             .font(.headline.bold())
-//                            .padding(.horizontal, 5)
                         Text("Distribution across your selected period")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-//                            .padding(.leading, 5)
 
-                        if isRadarEmpty(tonePoints) {            // 👈 empty state
+                        if vm.isLoadingRadar {
+                            ProgressView().frame(height: 220)
+                        } else if vm.radarPoints.isEmpty || vm.radarPoints.allSatisfy({ $0.value <= 0 }) {
                             EmptyRadarState()
                         } else {
-                            RadarChart(axesOrder: toneOrder, points: tonePoints)
+                            RadarChart(axesOrder: toneOrder, points: vm.radarPoints)
                                 .frame(height: 280)
                         }
-                            
                     }
                     .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-                    )
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.primary.opacity(0.06), lineWidth: 1))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .listRowInsets(EdgeInsets())
@@ -266,6 +253,8 @@ struct InsightsView: View {
                 if !didLoadOnce {
                     didLoadOnce = true
                     await vm.loadHistory()
+                    // Updating for Tone Radar
+                    await vm.loadRadar(rangeDays: selectedRange.days)
                 }
             }
 
@@ -275,6 +264,8 @@ struct InsightsView: View {
                     // Example mapping—replace with your VM API that accepts a window.
                     // await vm.loadHistory(rangeDays: newValue.days)
                     await vm.loadHistory()
+                    // Adding to sensitivity for Tone Radar to responsive for date changes
+                    await vm.loadRadar(rangeDays: newValue.days)
                 }
             }
 

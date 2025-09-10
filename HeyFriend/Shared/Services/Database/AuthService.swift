@@ -25,11 +25,11 @@ final class AuthService: ObservableObject {
         }
     }
 
-//    func signInAnonymouslyIfNeeded() async throws {
-//        if Auth.auth().currentUser == nil {
-//            _ = try await Auth.auth().signInAnonymously()
-//        }
-//    }
+    func signInAnonymouslyIfNeeded() async throws {
+        if Auth.auth().currentUser == nil {
+            _ = try await Auth.auth().signInAnonymously()
+        }
+    }
 
     // MARK: - Google Sign-In
     @MainActor
