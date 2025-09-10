@@ -8,6 +8,85 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Range Selector
+
+private enum InsightsRange: String, CaseIterable, Identifiable {
+    case seven = "7 Days"
+    case thirty = "30 Days"
+    case ninety = "3 Months"
+
+    var id: Self { self }
+    var days: Int {
+        switch self {
+        case .seven: return 7
+        case .thirty: return 30
+        case .ninety: return 90
+        }
+    }
+}
+
+private struct InsightsHeader: View {
+    @Binding var selected: InsightsRange
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your Insights")
+                    .font(.title2.bold())
+                Text("Understanding your emotional patterns")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Pills selector
+            HStack(spacing: 10) {
+                ForEach(InsightsRange.allCases) { range in
+                    let isSelected = (range == selected)
+                    Button {
+                        selected = range
+                    } label: {
+                        Text(range.rawValue)
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(isSelected
+                                          ? Color(.systemBackground)
+                                          : Color(.secondarySystemBackground))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(isSelected
+                                            ? Color.primary.opacity(0.12)
+                                            : Color.primary.opacity(0.06), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(isSelected ? 0.06 : 0), radius: 10, x: 0, y: 4)
+                            .foregroundStyle(isSelected ? .primary : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(range.rawValue)")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.thinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+}
+
+
+
+// MARK: - Main View
+
 struct InsightsView: View {
     @StateObject private var vm = InsightsViewModel()
     @State private var didLoadOnce = false
@@ -15,20 +94,37 @@ struct InsightsView: View {
     @StateObject private var entitlements = EntitlementsViewModel()
     @State private var showPaywall = false
 
+    // NEW: selected range state (defaults to 7 days)
+    @State private var selectedRange: InsightsRange = .seven
+
     var body: some View {
         NavigationStack {
             List {
+                // Header + Range Selector
                 Section {
-                    FreeSessionsPill(
-                        isPlus: entitlements.isPlus,
-                        remaining: entitlements.remaining,
-                        limit: entitlements.freeLimit,
-                        onUpgradeTap: { showPaywall = true }
-                    )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowSeparator(.hidden)
+                    InsightsHeader(selected: $selectedRange)
+//                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+//                        .padding(.horizontal, )
                 }
 
+                // Free / Plus pill
+                // Show pill ONLY if not Plus
+                if !entitlements.isPlus {
+                    Section {
+                        FreeSessionsPill(
+                            isPlus: entitlements.isPlus,
+                            remaining: entitlements.remaining,
+                            limit: entitlements.freeLimit,
+                            onUpgradeTap: { showPaywall = true }
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
+                    }
+                }
+
+                // History list
                 Section {
                     if vm.rows.isEmpty && !vm.isLoading && vm.error == nil {
                         EmptyHistoryState()
@@ -59,13 +155,10 @@ struct InsightsView: View {
             // Start entitlements once
             .onAppear { entitlements.start() }
 
-            // 🚫 Do NOT attach the sheet here anymore
-            // .sheet(isPresented: $showPaywall) { ... }
-
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
 
-            // ✅ Prevent pull/overscroll while the sheet is up
+            // Prevent pull/overscroll while the sheet is up
             .scrollDisabled(showPaywall)
 
             .background(
@@ -83,13 +176,22 @@ struct InsightsView: View {
                 }
             }
 
-            // Keep refresh, but it will NOT fire when scrolling is disabled
+            // Pull to refresh respects scrollDisabled
             .refreshable { await vm.loadHistory() }
 
-            // Load once (no “refresh look” after dismiss)
+            // Initial load
             .task {
                 if !didLoadOnce {
                     didLoadOnce = true
+                    await vm.loadHistory()
+                }
+            }
+
+            // React to range changes (plug in your VM range-based fetch here)
+            .onChange(of: selectedRange) { _, newValue in
+                Task {
+                    // Example mapping—replace with your VM API that accepts a window.
+                    // await vm.loadHistory(rangeDays: newValue.days)
                     await vm.loadHistory()
                 }
             }
@@ -104,7 +206,7 @@ struct InsightsView: View {
                 Text(vm.error ?? "")
             }
         }
-        // ✅ Attach the paywall sheet OUTSIDE the Navigation/List
+        // Attach the paywall sheet OUTSIDE the Navigation/List
         .sheet(isPresented: $showPaywall) {
             PaywallView()
                 .presentationBackgroundInteraction(.disabled)
@@ -164,18 +266,18 @@ private struct HistoryCardRow: View {
 
             HStack(spacing: 8) {
                 if !subtitle.isEmpty {
-                    HStack(spacing: 4) { // tighter spacing than Label
+                    HStack(spacing: 4) {
                         Image(systemName: "waveform.path.ecg")
                             .font(.caption)
                         Text(subtitle)
                     }
                 }
-                
+
                 Spacer(minLength: 4)
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: "calendar")
-                        .font(.caption)          // smaller icon so it hugs the text nicely
+                        .font(.caption)
                     Text(date.formatted(date: .abbreviated, time: .shortened))
                 }
             }
