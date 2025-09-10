@@ -52,17 +52,18 @@ private struct InsightsHeader: View {
                             .background(
                                 Capsule()
                                     .fill(isSelected
-                                          ? Color(.systemBackground)
+                                          ? Color.orange // 🔥 brand orange when active
                                           : Color(.secondarySystemBackground))
                             )
                             .overlay(
                                 Capsule()
                                     .stroke(isSelected
-                                            ? Color.primary.opacity(0.12)
-                                            : Color.primary.opacity(0.06), lineWidth: 1)
+                                            ? Color.orange.opacity(0.8) // 🔥 border matches
+                                            : Color.primary.opacity(0.06),
+                                            lineWidth: 1)
                             )
                             .shadow(color: .black.opacity(isSelected ? 0.06 : 0), radius: 10, x: 0, y: 4)
-                            .foregroundStyle(isSelected ? .primary : .secondary)
+                            .foregroundStyle(isSelected ? .white : .secondary) // 🔥 white text when active
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(range.rawValue)")
