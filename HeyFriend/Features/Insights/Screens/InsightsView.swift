@@ -25,6 +25,30 @@ private enum InsightsRange: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Models for Tone Card
+
+struct ToneStat: Identifiable {
+    let id = UUID()
+    let label: String       // e.g., "Calm"
+    let percent: Double     // 0...1 (e.g., 0.45)
+    let delta: Double       // -1...1 change vs previous period (e.g., +0.10)
+    let color: Color        // brand color per tone
+}
+
+// MARK: - Model
+struct TonePoint: Identifiable, Equatable {
+    let id: String
+    let label: String        // e.g., "Calm"
+    let value: Double        // 0...1 normalized intensity for the range/window
+    
+    init(label: String, value: Double) {
+        self.label = label
+        self.value = value
+        self.id = label
+    }
+}
+
+
 private struct InsightsHeader: View {
     @Binding var selected: InsightsRange
 
@@ -124,6 +148,59 @@ struct InsightsView: View {
                         .listRowSeparator(.hidden)
                     }
                 }
+                
+                // Tone Card Trends
+//                Section {
+//                    ToneTrendsCard(
+//                        stats: [
+//                            ToneStat(label: "Calm",      percent: 0.45, delta:  0.10, color: .teal),
+//                            ToneStat(label: "Hopeful",   percent: 0.32, delta:  0.00, color: .orange), // brand tone
+//                            ToneStat(label: "Reflective",percent: 0.23, delta: -0.07, color: .indigo)
+//                        ],
+//                        weekSeries: [0.26, 0.31, 0.28, 0.40, 0.38, 0.45, 0.47] // sample data
+//                    )
+//                }
+                Section {
+                    // Example: 3–6 tones. Values must be 0...1 (normalized).
+                    let toneOrder = ["Calm","Hopeful","Reflective","Anxious","Stressed"]
+
+                    // Build points from your data (0…1 values). Missing ones are fine.
+                    let tonePoints: [TonePoint] = [
+                        .init(label: "Calm",       value: 0.5),
+                        .init(label: "Hopeful",    value: 0.8),
+                        .init(label: "Reflective", value: 0.9),
+                        .init(label: "Anxious",    value: 0.6),
+                        .init(label: "Stressed",   value: 0.7)
+                    ]
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Tone Radar")
+                            .font(.headline.bold())
+//                            .padding(.horizontal, 5)
+                        Text("Distribution across your selected period")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+//                            .padding(.leading, 5)
+
+                        RadarChart(axesOrder: toneOrder, points: tonePoints)
+                            .frame(height: 280)
+                            
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+
 
                 // History list
                 Section {
@@ -322,3 +399,303 @@ private struct EmptyHistoryState: View {
         )
     }
 }
+
+// MARK: - Sparkline
+
+private struct SparklineView: View {
+    let values: [Double]                // e.g., [0.10, 0.25, 0.22, ...] for 7 days
+    let lineWidth: CGFloat = 2
+    let showDots: Bool = true
+
+    private var normalized: [CGFloat] {
+        guard let minV = values.min(), let maxV = values.max(), maxV > minV else {
+            return values.map { _ in 0.5 } // flat line if no variance
+        }
+        return values.map { CGFloat(($0 - minV) / (maxV - minV)) }
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let step = values.count > 1 ? w / CGFloat(values.count - 1) : 0
+
+            // Line path
+            let path = Path { p in
+                guard !normalized.isEmpty else { return }
+                p.move(to: CGPoint(x: 0, y: h - normalized[0] * h))
+                for i in 1..<normalized.count {
+                    p.addLine(to: CGPoint(x: CGFloat(i) * step, y: h - normalized[i] * h))
+                }
+            }
+
+            // Area fill (soft)
+            let area = Path { p in
+                guard !normalized.isEmpty else { return }
+                p.move(to: CGPoint(x: 0, y: h))
+                for i in 0..<normalized.count {
+                    p.addLine(to: CGPoint(x: CGFloat(i) * step, y: h - normalized[i] * h))
+                }
+                p.addLine(to: CGPoint(x: w, y: h))
+                p.closeSubpath()
+            }
+
+            area
+                .fill(LinearGradient(colors: [
+                    Color.orange.opacity(0.12),
+                    Color.orange.opacity(0.02)
+                ], startPoint: .top, endPoint: .bottom))
+
+            path
+                .stroke(Color.orange, style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
+
+            if showDots {
+                ForEach(values.indices, id: \.self) { i in
+                    let x = CGFloat(i) * step
+                    let y = h - normalized[i] * h
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 6, height: 6)
+                        .position(x: x, y: y)
+                }
+            }
+        }
+        .frame(height: 56)
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Tone Trends Card
+
+private struct ToneTrendsCard: View {
+    let title: String = "Tone Trends"
+    let subtitle: String = "This week at a glance"
+    let stats: [ToneStat]              // top 2–3 tones
+    let weekSeries: [Double]           // 7 values for sparkline (dominant tone % per day)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Titles
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.headline.bold())
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
+
+            // Stats row (Calm / Hopeful / Reflective)
+            HStack(spacing: 12) {
+                ForEach(stats) { s in
+                    ToneStatPill(stat: s)
+                        .frame(maxWidth: .infinity)   // 👈 each pill stretches equally
+                }
+            }
+
+            // Sparkline
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Last 7 days")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                SparklineView(values: weekSeries)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.thinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+        .padding(.horizontal, 16)  // spacing from screen edges in List row
+        .listRowInsets(EdgeInsets())           // align with History width
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+}
+
+private struct ToneStatPill: View {
+    let stat: ToneStat
+
+    private var arrowSymbol: (name: String, color: Color) {
+        if stat.delta > 0.005 { return ("arrow.up", .green) }
+        if stat.delta < -0.005 { return ("arrow.down", .red) }
+        return ("arrow.left.and.right", .secondary)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(stat.color.opacity(0.25))
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(stat.label)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text("\(Int(round(stat.percent * 100)))%")
+                        .font(.subheadline.weight(.semibold))
+                    Image(systemName: arrowSymbol.name)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(arrowSymbol.color)
+                    Text(deltaString)
+                        .font(.caption2)
+                        .foregroundStyle(arrowSymbol.color)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    private var deltaString: String {
+        let pct = Int(round(abs(stat.delta) * 100))
+        if pct == 0 { return "↔︎ 0%" }
+        return (stat.delta > 0 ? "+\(pct)%" : "-\(pct)%")
+    }
+}
+
+// MARK: - Radar Chart
+struct RadarChart: View {
+    /// Set once; keeps axes locked in this order forever.
+    let axesOrder: [String]                 // e.g. ["Calm","Hopeful","Reflective","Anxious","Stressed"]
+    let points: [TonePoint]                 // current values for some/all of the axes
+    let levels: Int = 5
+    let showDots: Bool = true
+    let labelPadding: CGFloat = 18
+    let lineWidth: CGFloat = 2
+    var strokeColor: Color = .orange
+    var fillGradient: LinearGradient = LinearGradient(
+        colors: [Color.orange.opacity(0.28), Color.orange.opacity(0.06)],
+        startPoint: .top, endPoint: .bottom
+    )
+
+    @State private var animValues: [Double] = []
+
+    // Map incoming `points` to the canonical order (missing tones -> 0)
+    private var orderedValues: [Double] {
+        let dict = Dictionary(uniqueKeysWithValues: points.map { ($0.label, max(0, min(1, $0.value))) })
+        return axesOrder.map { dict[$0] ?? 0.0 }
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let center = CGPoint(x: geo.size.width/2, y: geo.size.height/2)
+            let radius = (size/2) - labelPadding
+            let n = max(axesOrder.count, 3)
+            let values = animValues.isEmpty ? orderedValues : animValues
+            let pts = polygonPoints(values: values, center: center, radius: radius, n: n)
+
+            ZStack {
+                // Rings
+                ForEach(1...levels, id: \.self) { level in
+                    let frac = CGFloat(level) / CGFloat(levels)
+                    ringPath(n: n, radius: radius * frac, center: center)
+                        .stroke(.secondary.opacity(0.25), lineWidth: 1)
+                }
+                // Spokes
+                ForEach(0..<n, id: \.self) { i in
+                    let angle = angleFor(index: i, total: n)
+                    Path { p in
+                        p.move(to: center)
+                        p.addLine(to: pointOnCircle(center: center, radius: radius, angle: angle))
+                    }.stroke(.secondary.opacity(0.25), lineWidth: 1)
+                }
+                // Labels
+                ForEach(axesOrder.indices, id: \.self) { i in
+                    let angle = angleFor(index: i, total: n)
+                    let labelPos = pointOnCircle(center: center, radius: radius + 12, angle: angle)
+
+                    Text(axesOrder[i])
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .position(labelPos)            // exact coordinates — no extra frame
+                }
+                // Fill
+                Path { p in
+                    guard let first = pts.first else { return }
+                    p.move(to: first)
+                    for pt in pts.dropFirst() { p.addLine(to: pt) }
+                    p.closeSubpath()
+                }
+                .fill(fillGradient)
+                // Stroke
+                Path { p in
+                    guard let first = pts.first else { return }
+                    p.move(to: first)
+                    for pt in pts.dropFirst() { p.addLine(to: pt) }
+                    p.closeSubpath()
+                }
+                .stroke(strokeColor, style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
+                // Dots
+                if showDots {
+                    ForEach(pts.indices, id: \.self) { i in
+                        Circle().fill(strokeColor).frame(width: 6, height: 6).position(pts[i])
+                    }
+                }
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    animValues = orderedValues
+                }
+            }
+            .onChange(of: points) { _, _ in
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    animValues = orderedValues
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Radar chart of tone intensities")
+    }
+
+    // MARK: - Geometry helpers
+    private func angleFor(index i: Int, total n: Int) -> Angle {
+        Angle(degrees: (Double(i) / Double(n)) * 360.0 - 90.0) // start at top, clockwise
+    }
+    
+    private func pointOnCircle(center: CGPoint, radius: CGFloat, angle: Angle) -> CGPoint {
+        let r = CGFloat(angle.radians)
+        return CGPoint(x: center.x + radius * cos(r), y: center.y + radius * sin(r))
+    }
+    
+    private func ringPath(n: Int, radius: CGFloat, center: CGPoint) -> Path {
+        let verts = (0..<n).map { i in pointOnCircle(center: center, radius: radius, angle: angleFor(index: i, total: n)) }
+        return Path { p in
+            guard let first = verts.first else { return }
+            p.move(to: first)
+            for v in verts.dropFirst() { p.addLine(to: v) }
+            p.closeSubpath()
+        }
+    }
+    
+    private func polygonPoints(values: [Double], center: CGPoint, radius: CGFloat, n: Int) -> [CGPoint] {
+        values.enumerated().map { (i, v) in
+            let r = radius * CGFloat(max(0, min(1, v)))
+            let a = angleFor(index: i, total: n)
+            return pointOnCircle(center: center, radius: r, angle: a)
+        }
+    }
+    
+//    private func textAlignment(for angle: Angle) -> Alignment {
+//        let deg = angle.degrees.truncatingRemainder(dividingBy: 360)
+//        if deg > -90 && deg < 90 { return .leading }
+//        if deg < -90 || deg > 90 { return .trailing }
+//        return .center
+//    }
+//    
+//    private func adjustedLabelPosition(for pos: CGPoint, center: CGPoint, angle: Angle) -> CGPoint {
+//        let r = CGFloat(angle.radians)
+//        return CGPoint(x: pos.x + cos(r)*8, y: pos.y + sin(r)*8)
+//    }
+    }
