@@ -173,7 +173,7 @@ struct InsightsView: View {
                         .init(label: "Stressed",   value: 0.7)
                     ]
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 7) {
                         Text("Tone Radar")
                             .font(.headline.bold())
 //                            .padding(.horizontal, 5)
@@ -182,8 +182,12 @@ struct InsightsView: View {
                             .foregroundStyle(.secondary)
 //                            .padding(.leading, 5)
 
-                        RadarChart(axesOrder: toneOrder, points: tonePoints)
-                            .frame(height: 280)
+                        if isRadarEmpty(tonePoints) {            // 👈 empty state
+                            EmptyRadarState()
+                        } else {
+                            RadarChart(axesOrder: toneOrder, points: tonePoints)
+                                .frame(height: 280)
+                        }
                             
                     }
                     .padding(16)
@@ -660,6 +664,7 @@ struct RadarChart: View {
     }
 
     // MARK: - Geometry helpers
+    
     private func angleFor(index i: Int, total n: Int) -> Angle {
         Angle(degrees: (Double(i) / Double(n)) * 360.0 - 90.0) // start at top, clockwise
     }
@@ -698,4 +703,29 @@ struct RadarChart: View {
 //        let r = CGFloat(angle.radians)
 //        return CGPoint(x: pos.x + cos(r)*8, y: pos.y + sin(r)*8)
 //    }
+}
+
+// MARK: - Tone Radar Empty State
+
+// Consider the radar "empty" when there are no points or all values are zero.
+private func isRadarEmpty(_ points: [TonePoint]) -> Bool {
+    points.isEmpty || points.allSatisfy { $0.value <= 0 }
+}
+
+private struct EmptyRadarState: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "hexagon")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text("No tone data yet")
+                .font(.headline)
+            Text("Start a session and we’ll chart your tone distribution here.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 150) // nice presence in the card
     }
+}
