@@ -121,6 +121,16 @@ struct InsightsView: View {
 
     // NEW: selected range state (defaults to 7 days)
     @State private var selectedRange: InsightsRange = .seven
+    
+    // Helping with auto loading user data...
+    @Environment(\.scenePhase) private var scenePhase
+    
+    // Local flag
+    @State private var isPullRefreshing = false
+    
+    // Tone order for Tone Radar
+    private var toneOrder: [String] { ToneBucket.allCases.map(\.rawValue) }
+
 
     var body: some View {
         NavigationStack {
@@ -164,8 +174,8 @@ struct InsightsView: View {
                 
                 
                 Section {
-                    let toneOrder = ToneBucket.allCases.map(\.rawValue)
-
+                    let radarHeight: CGFloat = 280
+                    
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Tone Radar")
                             .font(.headline.bold())
@@ -173,14 +183,23 @@ struct InsightsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        if vm.isLoadingRadar {
-                            ProgressView().frame(height: 220)
-                        } else if vm.radarPoints.isEmpty || vm.radarPoints.allSatisfy({ $0.value <= 0 }) {
-                            EmptyRadarState()
-                        } else {
+                        ZStack {
+                            // Chart
                             RadarChart(axesOrder: toneOrder, points: vm.radarPoints)
-                                .frame(height: 280)
+                                .opacity(!vm.isLoadingRadar && !(vm.radarPoints.isEmpty || vm.radarPoints.allSatisfy { $0.value <= 0 }) ? 1 : 0)
+
+                            // Empty
+                            EmptyRadarState()
+                                .opacity(!vm.isLoadingRadar && (vm.radarPoints.isEmpty || vm.radarPoints.allSatisfy { $0.value <= 0 }) ? 1 : 0)
+
+                            // Spinner
+                            if vm.isLoadingRadar {
+                                ProgressView().controlSize(.large)
+                            }
                         }
+                        .frame(height: radarHeight) // 👈 keeps height stable through state changes
+                        .animation(.easeInOut(duration: 0.2), value: vm.isLoadingRadar)
+                        .animation(.easeInOut(duration: 0.35), value: vm.radarPoints)
                     }
                     .padding(16)
                     .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial))
@@ -238,23 +257,37 @@ struct InsightsView: View {
                 .ignoresSafeArea()
             )
             .overlay {
-                if vm.isLoading {
-                    ProgressView().controlSize(.large)
-                        .padding(16)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                }
+                if vm.isLoading && !isPullRefreshing {
+                   ProgressView().controlSize(.large)
+                       .padding(16)
+                       .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+               }
             }
 
             // Pull to refresh respects scrollDisabled
-            .refreshable { await vm.loadHistory() }
+            .refreshable {
+//                await vm.loadHistory()
+                isPullRefreshing = true
+                await vm.refreshAll(rangeDays: selectedRange.days)
+                isPullRefreshing = false
+            }
 
             // Initial load
             .task {
                 if !didLoadOnce {
                     didLoadOnce = true
-                    await vm.loadHistory()
+//                    await vm.loadHistory()
                     // Updating for Tone Radar
-                    await vm.loadRadar(rangeDays: selectedRange.days)
+//                    await vm.loadRadar(rangeDays: selectedRange.days)
+                    // Refresh all data...
+                    await vm.refreshAll(rangeDays: selectedRange.days)
+                }
+            }
+            
+            // Keeps data fresh without the user doing anything
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    Task { await vm.refreshAll(rangeDays: selectedRange.days) }
                 }
             }
 
