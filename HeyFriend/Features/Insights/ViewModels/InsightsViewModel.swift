@@ -244,6 +244,14 @@ private func aggregateRadar(sessions: [SessionDocDTO], summaries: [InsightSummar
 
 // MARK: - Loader
 extension InsightsViewModel {
+    // Helping with refreshing all data when pulling down on insights page
+    func refreshAll(rangeDays: Int) async {
+        async let a: Void = loadHistory()
+        async let b: Void = loadRadar(rangeDays: rangeDays)
+        _ = await (a, b)
+    }
+    
+    // Loading our tone radar
     func loadRadar(rangeDays: Int) async {
         guard let uid = AuthService.shared.userId else {
             self.radarError = "Not signed in."
