@@ -86,8 +86,8 @@ Success will be measured by:
 - **Frontend:** SwiftUI (iOS)
 - **Voice-to-Text:** Apple Speech framework (future Whisper API)
 - **AI Engine:** OpenAI GPT API
-- **Backend (planned):** Firebase or Supabase
-- **Analytics:** PostHog or Amplitude
+- **Backend (planned):** Firebase
+- **Analytics:** Google Analytics (or Amplitude)
 
 ---
 
@@ -105,7 +105,7 @@ Success will be measured by:
 ## 🔮 Future Features
 
 - Text-based chat option.
-- Mood calendar.
+- Mood/Tone calendar.
 - Personalized insight engine (e.g., “You tend to feel anxious on Sundays”).
 - Gentle notification nudges to reflect.
 - PDF export of insights.
