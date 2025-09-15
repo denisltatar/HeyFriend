@@ -50,6 +50,66 @@ final class FirestoreService {
             "transcriptText": transcript
         ], merge: true)
     }
+    
+    // MARK: - Gratitude counting (user utterances preferred)
+    private func countGratitudeMentions(userUtterances: [String]?) -> Int {
+        // If we were given explicit user lines, use them; else return 0 and the caller can fallback.
+        guard let lines = userUtterances, !lines.isEmpty else { return 0 }
+
+        let patterns: [NSRegularExpression] = [
+            try! NSRegularExpression(pattern: #"\bthanks?\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bthank\s+you\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bi(?:'m| am)?\s+grateful\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bi\s+appreciate(?:\s+(it|you|that))?\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bappreciation\b"#, options: [.caseInsensitive])
+        ]
+        let negation = try! NSRegularExpression(pattern: #"\b(not|nothing|don'?t|didn'?t)\b"#, options: [.caseInsensitive])
+
+        var total = 0
+        for raw in lines {
+            let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !s.isEmpty else { continue }
+            let full = NSRange(s.startIndex..<s.endIndex, in: s)
+
+            var lineCount = patterns.reduce(0) { acc, re in acc + re.numberOfMatches(in: s, range: full) }
+            if negation.firstMatch(in: s, range: full) != nil {
+                lineCount = max(0, lineCount - 1) // simple negation guard
+            }
+            total += lineCount
+        }
+        return total
+    }
+
+    /// Attempts to extract **user-only** utterances from the session doc.
+    /// Preferred: an array field `userUtterances: [String]`.
+    /// Fallback: split `transcriptText` by lines and keep those that look like the user (e.g. "You:", "User:")
+    private func extractUserUtterances(from sessionData: [String: Any]) -> [String] {
+        if let arr = sessionData["userUtterances"] as? [String] {
+            return arr
+        }
+        var userLines: [String] = []
+        if let txt = sessionData["transcriptText"] as? String {
+            // Heuristic: keep bare lines or lines prefixed as the user; drop assistant/bot lines.
+            let lines = txt.components(separatedBy: .newlines)
+            for l in lines {
+                let t = l.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { continue }
+                let lower = t.lowercased()
+                if lower.hasPrefix("assistant:") || lower.hasPrefix("bot:") || lower.hasPrefix("heyfriend:") {
+                    continue
+                }
+                // If transcript prefixes speakers, keep typical user prefixes:
+                if lower.hasPrefix("you:") || lower.hasPrefix("user:") || lower.hasPrefix("me:") {
+                    userLines.append(String(t.drop(while: { $0 != ":" }).dropFirst()).trimmingCharacters(in: .whitespaces))
+                } else {
+                    // If no prefixes in transcript, keep the line (best-effort).
+                    userLines.append(t)
+                }
+            }
+        }
+        return userLines
+    }
+
 
     /// Persist your SessionSummary (matches your existing struct)
     func writeSummaryBundle(
@@ -85,7 +145,8 @@ final class FirestoreService {
             "createdAt": FieldValue.serverTimestamp(),
             "summary": mapped.summary.first ?? mapped.tone,
             "topTones": tones,
-            "durationSec": durationSec
+            "durationSec": durationSec,
+            "gratitudeMentions": mapped.gratitudeMentions
         ], merge: true)
     }
 

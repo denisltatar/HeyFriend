@@ -24,4 +24,5 @@ struct SessionSummary: Codable, Identifiable, Equatable {
     var language: LanguagePatterns?     // "could", "should", "have to"
 
     var recommendation: String?         // ≤ ~300 tokens, friendly and actionable
+    var gratitudeMentions: Int = 0          // Counting gratitude mentions for users
 }
