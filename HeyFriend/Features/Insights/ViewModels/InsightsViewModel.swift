@@ -39,8 +39,9 @@ final class InsightsViewModel: ObservableObject {
     @Published var commonThemes: [String] = []      // 2–4 short tags like "Growth mindset"
     @Published var focusTitle: String? = nil        // e.g., "Distortion Awareness"
     @Published var focusDescription: String? = nil  // 1–2 sentences, NOT the long 'recommendation'
-    @Published var isLoadingLanguage: Bool = false
+    @Published var isLoadingLanguage: Bool = true
     @Published var languageError: String? = nil
+    private var lastLangFetch: Date?
 
 
     // Load recent insight_summaries (already created in writeSummaryBundle)
@@ -443,6 +444,12 @@ extension InsightsViewModel {
     
     // Loading our language patterns
     func loadLanguagePatterns(rangeDays: Int) async {
+        // Refresh optionality to look cleaner
+        guard Date().timeIntervalSince(lastLangFetch ?? .distantPast) > 45 else { return }
+        lastLangFetch = Date()
+        isLoadingLanguage = true
+        defer { isLoadingLanguage = false }
+        
         guard let uid = AuthService.shared.userId else { return }
 
         isLoadingLanguage = true

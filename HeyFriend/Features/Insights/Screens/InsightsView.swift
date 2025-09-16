@@ -241,9 +241,17 @@ struct InsightsView: View {
                     LanguagePatternsCard(
                         themes: vm.commonThemes,
                         focusTitle: vm.focusTitle,
-                        focusDescription: vm.focusDescription
+                        focusDescription: vm.focusDescription,
+                        isLoading: vm.isLoadingLanguage
                     )
-                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 0, trailing: 16))
+//                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 20, trailing: 16))
+//                    .listRowSeparator(.hidden)
+//                    .listRowBackground(Color.clear)
+                    // ⬇️ Let the card own its spacing
+                    .padding(.horizontal, 16)
+                    .padding(.top, 22)
+                    .padding(.bottom, 20)
+                    .listRowInsets(EdgeInsets())            // zero → List won't meddle
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
@@ -276,10 +284,13 @@ struct InsightsView: View {
                         .padding(.top, 6)
                 }
             }
+            
             // Start entitlements once
             .onAppear { entitlements.start() }
 
             .listStyle(.plain)
+            // Spacings between sections
+            .listSectionSpacing(.custom(8))   // iOS 17+: consistent spacing between sections
             .scrollContentBackground(.hidden)
 
             // Prevent pull/overscroll while the sheet is up
@@ -410,47 +421,61 @@ private struct LanguagePatternsCard: View {
     let themes: [String]
     let focusTitle: String?
     let focusDescription: String?
+    var isLoading: Bool = false
+
+    private let minBodyHeight: CGFloat = 110
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            
-            // Title + brain icon
-           HStack(spacing: 8) {
-               Image(systemName: "brain.head.profile")
-                   .font(.title3.weight(.semibold))
-                   .foregroundStyle(.purple)   // tweak to brand color if you want
-               Text("Language Patterns")
-                   .font(.headline.bold())
-           }
+        ZStack {
+            // Main content ALWAYS present (only fade it)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.purple)
+                    Text("Language Patterns").font(.headline.bold())
+                }
 
-            // Common Themes pills
-            if themes.isEmpty {
-                Text("No recurring themes yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                // Wrap pills
-                SimplePills(items: themes.prefix(6).map { $0.capitalized })
+                Group {
+                    if themes.isEmpty {
+                        Text("No recurring themes yet")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        SimplePills(items: themes.prefix(6).map { $0.capitalized })
+                    }
 
+                    Divider().padding(.vertical, 4)
+
+                    if let t = focusTitle, let d = focusDescription, !t.isEmpty, !d.isEmpty {
+                        Text(t).font(.subheadline.bold())
+                        Text(d).font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text("Focus Spotlight").font(.subheadline.bold())
+                        Text("We’ll surface a short theme to keep in mind based on your recent sessions.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                .opacity(isLoading ? 0 : 1)
             }
+            .frame(minHeight: minBodyHeight)                // 👈 stabilize row height on first render
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 16).fill(.thinMaterial))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.06), lineWidth: 1))
 
-            Divider().padding(.vertical, 4)
-
-            // Focus snippet
-            if let title = focusTitle, let desc = focusDescription, !title.isEmpty, !desc.isEmpty {
-                Text(title).font(.subheadline.bold())
-                Text(desc).font(.footnote).foregroundStyle(.secondary)
-            } else {
-                Text("Focus Spotlight").font(.subheadline.bold())
-                Text("We’ll surface a short theme to keep in mind based on your recent sessions.")
-                    .font(.footnote).foregroundStyle(.secondary)
+            if isLoading {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .overlay(ProgressView().controlSize(.small))
+                    .allowsHitTesting(false)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16).fill(.thinMaterial))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.06), lineWidth: 1))
+        .animation(.none, value: isLoading)
     }
 }
+
+
 
 private struct SimplePills: View {
     let items: [String]
