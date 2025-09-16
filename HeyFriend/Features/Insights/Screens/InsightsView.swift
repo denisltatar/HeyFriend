@@ -230,6 +230,17 @@ struct InsightsView: View {
                     .listRowBackground(Color.clear)
                 }
 
+                // Language Patterns
+                Section {
+                    LanguagePatternsCard(
+                        themes: vm.commonThemes,
+                        focusTitle: vm.focusTitle,
+                        focusDescription: vm.focusDescription
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 20, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
 
                 // History list
                 Section {
@@ -320,6 +331,8 @@ struct InsightsView: View {
                     await vm.loadRadar(rangeDays: newValue.days)
                     // Loading up user gratitude mentions
                     await vm.loadGratitude(rangeDays: newValue.days)
+                    // Loading language patterns
+                    await vm.loadLanguagePatterns(rangeDays: newValue.days)
                 }
             }
 
@@ -345,6 +358,7 @@ struct InsightsView: View {
 
 // MARK: - Components
 
+// MARK: - Gratitude Mentions
 /// Gratitude Mention Card
 private struct GratitudeMentionsCard: View {
     let title: String
@@ -383,6 +397,86 @@ private struct GratitudeMentionsCard: View {
     }
 }
 
+// MARK: - Language Patterns
+
+/// Language Patterns Card
+private struct LanguagePatternsCard: View {
+    let themes: [String]
+    let focusTitle: String?
+    let focusDescription: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Language Patterns").font(.headline.bold())
+
+            // Common Themes pills
+            if themes.isEmpty {
+                Text("No recurring themes yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                // Wrap pills
+                FlexiblePills(items: themes.prefix(4).map { $0.capitalized })
+            }
+
+            Divider().padding(.vertical, 4)
+
+            // Focus snippet
+            if let title = focusTitle, let desc = focusDescription, !title.isEmpty, !desc.isEmpty {
+                Text(title).font(.subheadline.bold())
+                Text(desc).font(.footnote).foregroundStyle(.secondary)
+            } else {
+                Text("Focus Spotlight").font(.subheadline.bold())
+                Text("We’ll surface a short theme to keep in mind based on your recent sessions.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16).fill(.thinMaterial))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.06), lineWidth: 1))
+    }
+}
+
+private struct FlexiblePills: View {
+    let items: [String]
+    var body: some View {
+        var width = CGFloat.zero
+        var height = CGFloat.zero
+        return GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                ForEach(items, id: \.self) { text in
+                    pill(for: text)
+                        .alignmentGuide(.leading) { d in
+                            if (abs(width - d.width) > geo.size.width) { width = 0; height -= d.height }
+                            let result = width
+                            if text == items.last { width = 0 }
+                            width -= d.width
+                            return result
+                        }
+                        .alignmentGuide(.top) { _ in
+                            let result = height
+                            if text == items.last { height = 0 }
+                            return result
+                        }
+                }
+            }
+        }
+        .frame(height: 44) // good default for 3–4 pills; grows with content if anything changes later one
+    }
+
+    private func pill(for text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(Capsule().fill(Color.orange.opacity(0.12)))
+            .overlay(Capsule().stroke(Color.orange.opacity(0.25), lineWidth: 1))
+    }
+}
+
+
+
+
+// MARK: - History
 
 /// Pretty header with icon + pill count
 private struct HistorySectionHeader: View {
@@ -653,6 +747,7 @@ private struct ToneStatPill: View {
 }
 
 // MARK: - Radar Chart
+
 struct RadarChart: View {
     /// Set once; keeps axes locked in this order forever.
     let axesOrder: [String]                 // e.g. ["Calm","Hopeful","Reflective","Anxious","Stressed"]

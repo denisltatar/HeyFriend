@@ -35,6 +35,14 @@ final class InsightsViewModel: ObservableObject {
     @Published var gratitudeSeries: [Int] = []
     @Published var isLoadingGratitude: Bool = false
     @Published var gratitudeError: String?
+    
+    // Language Patterns / Focus Snippet
+    @Published var commonThemes: [String] = []      // 2–4 short tags like "Growth mindset"
+    @Published var focusTitle: String? = nil        // e.g., "Distortion Awareness"
+    @Published var focusDescription: String? = nil  // 1–2 sentences, NOT the long 'recommendation'
+    @Published var isLoadingLanguage: Bool = false
+    @Published var languageError: String? = nil
+
 
     // Load recent insight_summaries (already created in writeSummaryBundle)
     func loadHistory(limit: Int = 50) async {
@@ -257,7 +265,8 @@ extension InsightsViewModel {
         async let a: Void = loadHistory()
         async let b: Void = loadRadar(rangeDays: rangeDays)
         async let c: Void = loadGratitude(rangeDays: rangeDays)
-        _ = await (a, b, c)
+        async let d: Void = loadLanguagePatterns(rangeDays: rangeDays)
+        _ = await (a, b, c, d)
     }
     
     // Loading our gratitude mentions
@@ -362,6 +371,82 @@ extension InsightsViewModel {
             self.radarPoints = []
         }
     }
+    
+    // Load Language Patterns
+    func loadLanguagePatterns(rangeDays: Int) async {
+        guard let uid = AuthService.shared.userId else {
+            self.languageError = "Not signed in."
+            self.commonThemes = []
+            self.focusTitle = nil
+            self.focusDescription = nil
+            return
+        }
+
+        isLoadingLanguage = true
+        languageError = nil
+        defer { isLoadingLanguage = false }
+
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        guard
+            let startDay = cal.date(byAdding: .day, value: -(rangeDays - 1), to: todayStart),
+            let endExclusive = cal.date(byAdding: .day, value: 1, to: todayStart)
+        else { return }
+
+        do {
+            // Pull both: full sessions (for language signals) + insight_summaries (for short bullets)
+            async let sDocsRaw = FirestoreService.shared.listSessionsInRange(uid: uid, start: startDay, end: endExclusive)
+            async let iDocsRaw = FirestoreService.shared.listInsightSummariesInRange(uid: uid, start: startDay, endExclusive: endExclusive)
+            let (sDocs, iDocs) = try await (sDocsRaw, iDocsRaw)
+
+            // Compact language signals from sessions
+            struct LangSignal { let repeated: [String]; let thinking: String; let emotional: String }
+            var signals: [LangSignal] = []
+            for d in sDocs {
+                let data = d.data()
+                if let lang = data["language"] as? [String: Any] {
+                    let repeated = (lang["repeatedWords"] as? [String]) ?? []
+                    let thinking  = (lang["thinkingStyle"] as? String) ?? ""
+                    let emotional = (lang["emotionalIndicators"] as? String) ?? ""
+                    if !(repeated.isEmpty && thinking.isEmpty && emotional.isEmpty) {
+                        signals.append(.init(repeated: repeated, thinking: thinking, emotional: emotional))
+                    }
+                }
+            }
+
+            // Grab short insight bullets to give the model context (keep it tiny)
+            var bullets: [String] = []
+            for d in iDocs {
+                let data = d.data()
+                if let s = data["summary"] as? String, !s.isEmpty {
+                    bullets.append(s)
+                } else if let arr = data["summary"] as? [String], !arr.isEmpty {
+                    bullets.append(contentsOf: arr.prefix(2))
+                }
+            }
+            bullets = Array(bullets.prefix(24))  // keep prompt lean
+
+            // Ask the model ONCE for themes + a short "focus" snippet (not recs)
+            if let res = await ChatService.shared.generateLanguageThemesAndFocus(
+                bullets: bullets,
+                signals: signals.map { ["repeated": $0.repeated, "thinking": $0.thinking, "emotional": $0.emotional] }
+            ) {
+                self.commonThemes = res.themes
+                self.focusTitle = res.focus_title
+                self.focusDescription = res.focus_description
+            } else {
+                self.commonThemes = []
+                self.focusTitle = nil
+                self.focusDescription = nil
+            }
+        } catch {
+            self.languageError = error.localizedDescription
+            self.commonThemes = []
+            self.focusTitle = nil
+            self.focusDescription = nil
+        }
+    }
+
 
 }
 
