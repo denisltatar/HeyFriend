@@ -196,8 +196,15 @@ struct InsightsView: View {
                     let radarHeight: CGFloat = 280
                     
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Tone Radar")
-                            .font(.headline.bold())
+                        HStack(spacing: 8) {
+                            Image(systemName: "theatermasks")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.orange)
+                            Text("Tone Radar")
+                                .font(.headline.bold())
+                        }
+//                        Text("Tone Radar")
+//                            .font(.headline.bold())
                         Text("Distribution across your selected period")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -237,7 +244,7 @@ struct InsightsView: View {
                         focusTitle: vm.focusTitle,
                         focusDescription: vm.focusDescription
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 20, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 20, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
@@ -406,7 +413,15 @@ private struct LanguagePatternsCard: View {
     let focusDescription: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Language Patterns").font(.headline.bold())
+            
+            // Title + brain icon
+           HStack(spacing: 8) {
+               Image(systemName: "brain.head.profile")
+                   .font(.title3.weight(.semibold))
+                   .foregroundStyle(.purple)   // tweak to brand color if you want
+               Text("Language Patterns")
+                   .font(.headline.bold())
+           }
 
             // Common Themes pills
             if themes.isEmpty {
@@ -415,7 +430,8 @@ private struct LanguagePatternsCard: View {
                     .foregroundStyle(.secondary)
             } else {
                 // Wrap pills
-                FlexiblePills(items: themes.prefix(4).map { $0.capitalized })
+                SimplePills(items: themes.prefix(6).map { $0.capitalized })
+
             }
 
             Divider().padding(.vertical, 4)
@@ -437,41 +453,86 @@ private struct LanguagePatternsCard: View {
     }
 }
 
+private struct SimplePills: View {
+    let items: [String]
+    var minWidth: CGFloat = 140     // pill min width; tweak to taste
+    var hSpacing: CGFloat = 6
+    var vSpacing: CGFloat = 6
+
+    var body: some View {
+        // 🔧 max == min → cells won’t stretch, so no extra space between pills
+        let cols = [GridItem(.adaptive(minimum: minWidth, maximum: minWidth),
+                             spacing: hSpacing,
+                             alignment: .leading)]
+
+        LazyVGrid(columns: cols, alignment: .leading, spacing: vSpacing) {
+            ForEach(items, id: \.self) { text in
+                Text(text)
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.purple.opacity(0.12)))
+                    .overlay(Capsule().stroke(Color.purple.opacity(0.25), lineWidth: 1))
+            }
+        }
+    }
+}
+
+
 private struct FlexiblePills: View {
     let items: [String]
+    var hSpacing: CGFloat = 8
+    var vSpacing: CGFloat = 8
+    @State private var totalHeight: CGFloat = .zero
+
     var body: some View {
-        var width = CGFloat.zero
-        var height = CGFloat.zero
-        return GeometryReader { geo in
+        GeometryReader { geo in
             ZStack(alignment: .topLeading) {
+                var currentX: CGFloat = 0
+                var currentY: CGFloat = 0
+
                 ForEach(items, id: \.self) { text in
                     pill(for: text)
                         .alignmentGuide(.leading) { d in
-                            if (abs(width - d.width) > geo.size.width) { width = 0; height -= d.height }
-                            let result = width
-                            if text == items.last { width = 0 }
-                            width -= d.width
+                            if currentX + d.width > geo.size.width {
+                                // wrap to next line
+                                currentX = 0
+                                currentY -= (d.height + vSpacing)
+                            }
+                            let result = currentX
+                            currentX += (d.width + hSpacing)
                             return result
                         }
-                        .alignmentGuide(.top) { _ in
-                            let result = height
-                            if text == items.last { height = 0 }
+                        .alignmentGuide(.top) { d in
+                            let result = currentY
                             return result
                         }
                 }
             }
+            .background(heightReader($totalHeight))
         }
-        .frame(height: 44) // good default for 3–4 pills; grows with content if anything changes later one
+        .frame(height: totalHeight) // let measured height prevent overlap
     }
 
     private func pill(for text: String) -> some View {
         Text(text)
             .font(.caption.weight(.medium))
-            .padding(.horizontal, 10).padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7) // a hair more vertical padding
             .background(Capsule().fill(Color.orange.opacity(0.12)))
             .overlay(Capsule().stroke(Color.orange.opacity(0.25), lineWidth: 1))
     }
+
+    // Measures the ZStack so the container’s height expands correctly.
+    private func heightReader(_ binding: Binding<CGFloat>) -> some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear   { binding.wrappedValue = proxy.size.height }
+                .onChange(of: proxy.size.height) { _, new in binding.wrappedValue = new }
+        }
+    }
 }
+
 
 
 
