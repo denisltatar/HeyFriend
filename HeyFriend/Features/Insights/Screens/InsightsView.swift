@@ -179,16 +179,16 @@ struct InsightsView: View {
                         valueText: "\(vm.gratitudeTotal)",
                         subtitle: "in the last \(selectedRange.days) days"
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 20, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
                     // Optional sparkline from daily buckets
-                    SparklineView(values: vm.gratitudeSeries.map(Double.init))
-                        .padding(.horizontal, 16)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 8, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+//                    SparklineView(values: vm.gratitudeSeries.map(Double.init))
+//                        .padding(.horizontal, 16)
+//                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 8, trailing: 16))
+//                        .listRowSeparator(.hidden)
+//                        .listRowBackground(Color.clear)
                 }
                 
                 // Tone Radar
@@ -356,12 +356,10 @@ private struct GratitudeMentionsCard: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.pink)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).font(.headline.bold())
                 Text(valueText)
                     .font(.system(size: 44, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.pink)
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
@@ -369,7 +367,6 @@ private struct GratitudeMentionsCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.primary.opacity(0.06), lineWidth: 1))
     }
 }
 

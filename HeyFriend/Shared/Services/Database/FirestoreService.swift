@@ -135,19 +135,27 @@ final class FirestoreService {
             ]
         }
         if let rec = mapped.recommendation { write["recommendation"] = rec }
+        
+        if mapped.gratitudeMentions > 0 {
+            write["gratitudeMentions"] = mapped.gratitudeMentions
+        }
 
         try await sessionRef(uid, sid).setData(write, merge: true)
 
         // Lightweight Insights list row
         var tones = [mapped.tone]
         if let extra = mapped.supportingTones { tones.append(contentsOf: extra) }
+        
+        let now = Date()
         try await insightSummariesRef(uid).document(sid).setData([
-            "createdAt": FieldValue.serverTimestamp(),
+            "createdAt": Timestamp(date: now),
+            "createdAtServer": FieldValue.serverTimestamp(),
             "summary": mapped.summary.first ?? mapped.tone,
             "topTones": tones,
             "durationSec": durationSec,
             "gratitudeMentions": mapped.gratitudeMentions
         ], merge: true)
+        print("📝 FirestoreService: wrote insight_summaries/\(sid) gratitude=\(mapped.gratitudeMentions)")
     }
 
     // MARK: - Reads for Insights
@@ -181,13 +189,21 @@ final class FirestoreService {
         return snap.documents
     }
 
-    func listInsightSummariesInRange(uid: String, start: Date, end: Date) async throws -> [QueryDocumentSnapshot] {
-        let snap = try await insightSummariesRef(uid)
-            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: start))
-            .whereField("createdAt", isLessThanOrEqualTo: Timestamp(date: end))
-            .order(by: "createdAt", descending: false)
+    func listInsightSummariesInRange(uid: String, start: Date, endExclusive: Date) async throws -> [QueryDocumentSnapshot] {
+        let db = Firestore.firestore()
+        return try await db.collection("users").document(uid)
+            .collection("insight_summaries")
+            .whereField("createdAt", isGreaterThanOrEqualTo: start)
+            .whereField("createdAt", isLessThan: endExclusive)     // 👈 half-open window
+            .order(by: "createdAt")
             .getDocuments()
-        return snap.documents
+            .documents
+//        let snap = try await insightSummariesRef(uid)
+//            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: start))
+//            .whereField("createdAt", isLessThanOrEqualTo: Timestamp(date: end))
+//            .order(by: "createdAt", descending: false)
+//            .getDocuments()
+//        return snap.documents
     }
     
     

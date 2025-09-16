@@ -274,15 +274,21 @@ extension InsightsViewModel {
         defer { isLoadingGratitude = false }
 
         let cal = Calendar.current
-        let endDay = cal.startOfDay(for: Date())
-        guard let startDay = cal.date(byAdding: .day, value: -(rangeDays - 1), to: endDay) else { return }
+        let todayStart = cal.startOfDay(for: Date())
+        guard
+            let startDay = cal.date(byAdding: .day, value: -(rangeDays - 1), to: todayStart),
+            let endExclusive = cal.date(byAdding: .day, value: 1, to: todayStart)
+        else { return }
 
         do {
+            // 👇 NOTE the label endExclusive: and the window that includes *today*
             let docs = try await FirestoreService.shared.listInsightSummariesInRange(
-                uid: uid, start: startDay, end: endDay
+                uid: uid,
+                start: startDay,
+                endExclusive: endExclusive
             )
-            var byDay: [Date: Int] = [:]
 
+            var byDay: [Date: Int] = [:]
             for d in docs {
                 let data = d.data()
                 let created = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
@@ -303,6 +309,14 @@ extension InsightsViewModel {
 
             self.gratitudeSeries = series
             self.gratitudeTotal = total
+            print("📊 InsightsVM: gratitudeTotal=\(total) over \(rangeDays)d (today included)")
+            // TEMP DEBUG: see what we got back
+            docs.forEach { d in
+                let data = d.data()
+                print("🔬 got summary doc",
+                      "createdAt=", (data["createdAt"] as? Timestamp)?.dateValue() ?? .distantPast,
+                      "gratitude=", data["gratitudeMentions"] as? Int ?? -1)
+            }
         } catch {
             self.gratitudeError = error.localizedDescription
             self.gratitudeSeries = []
@@ -323,12 +337,20 @@ extension InsightsViewModel {
         radarError = nil
         defer { isLoadingRadar = false }
 
-        let end = Date()
-        guard let start = Calendar.current.date(byAdding: .day, value: -rangeDays, to: end) else { return }
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        guard
+            let startDay = cal.date(byAdding: .day, value: -(rangeDays - 1), to: todayStart),
+            let endExclusive = cal.date(byAdding: .day, value: 1, to: todayStart)
+        else { return }
 
         do {
-            async let sDocs = FirestoreService.shared.listSessionsInRange(uid: uid, start: start, end: end)
-            async let iDocs = FirestoreService.shared.listInsightSummariesInRange(uid: uid, start: start, end: end)
+            async let sDocs = FirestoreService.shared.listSessionsInRange(
+                uid: uid, start: startDay, end: endExclusive
+            )
+            async let iDocs = FirestoreService.shared.listInsightSummariesInRange(
+                uid: uid, start: startDay, endExclusive: endExclusive
+            )
 
             let (sessionsRaw, summariesRaw) = try await (sDocs, iDocs)
             let sessions = sessionsRaw.map { SessionDocDTO($0.data()) }
@@ -340,5 +362,6 @@ extension InsightsViewModel {
             self.radarPoints = []
         }
     }
+
 }
 

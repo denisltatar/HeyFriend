@@ -85,7 +85,10 @@ struct HeyFriendApp: App {
 //            }
             
             // ⬇️ ADDED: initial entitlement sync + start background listener
-           .task { EntitlementSync.shared.start() }
+            .task {
+                print("👤 UID:", Auth.auth().currentUser?.uid ?? "nil")
+                EntitlementSync.shared.start()
+            }
 
 
            // ⬇️ ADDED: refresh when app returns to foreground
