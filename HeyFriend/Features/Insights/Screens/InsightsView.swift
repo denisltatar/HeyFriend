@@ -353,20 +353,33 @@ private struct GratitudeMentionsCard: View {
     var icon: String = "heart"
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3.weight(.semibold))
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.headline.bold())
-                Text(valueText)
-                    .font(.system(size: 44, weight: .heavy, design: .rounded))
-                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color(red: 1.0, green: 0.12, blue: 0.44)) // #FF1F6F
+                
+                Text(title)
+                    .font(.headline.bold())
             }
-            Spacer()
+
+            Text(valueText)
+                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color(red: 1.0, green: 0.12, blue: 0.44))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }
 
