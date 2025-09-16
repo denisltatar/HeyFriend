@@ -70,13 +70,16 @@ extension ChatService {
         let tone: String
         let supporting_tones: [String]?
         let tone_note: String?
+        
         struct Language: Codable {
             let repeated_words: [String]
             let thinking_style: String
             let emotional_indicators: String
         }
+        
         let language: Language?
         let recommendation: String?
+        let gratitude_mentions: Int?
     }
     
     // Commpiling transcript
@@ -120,6 +123,7 @@ extension ChatService {
                 "emotional_indicators": "<short phrase>"                            // see rules, e.g. "Cautious optimism"
               },
               "recommendation": "<≤300 tokens of friendly, actionable advice that ideally are CBT-DBT-aligned micro-steps, grounded based on what was discussed>"
+              "gratitude_mentions": <integer count of times user expressed gratitude>
             }
             
             RULES
@@ -138,6 +142,8 @@ extension ChatService {
             - LANGUAGE.emotional_indicators: short phrase (e.g., “cautious optimism”, “frustrated but determined”) only if supported.
             - If LANGUAGE has no clear signals, omit the whole "language" object.
             - RECOMMENDATION: ≤300 tokens, concrete and doable (CBT/DBT‑aligned micro‑steps), grounded in what was discussed.
+            - GRATITUDE_MENTIONS: - Count gratitude_mentions as the number of distinct USER utterances that express gratitude
+                (e.g., “thanks/thank you”, “I appreciate…”, “I’m grateful…”). Ignore assistant/bot lines and negations (e.g., “not grateful”). If none are present, return 0.
             - If there are signs of imminent self‑harm/harm-to-others, instead return:
                 {
                   "summary": ["We can’t summarize right now."],
@@ -205,8 +211,10 @@ extension ChatService {
                         emotionalIndicators: $0.emotional_indicators
                     )
                 },
-                recommendation: raw.recommendation
+                recommendation: raw.recommendation,
+                gratitudeMentions: raw.gratitude_mentions ?? 0
             )
+            print("🔎 ChatService: model returned gratitude_mentions=\(mapped.gratitudeMentions)")
             completion(mapped)
         }.resume()
     }

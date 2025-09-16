@@ -172,7 +172,26 @@ struct InsightsView: View {
 //                    )
 //                }
                 
+                // Gratitude Mentions
+                Section {
+                    GratitudeMentionsCard(
+                        title: "Gratitude Mentions",
+                        valueText: "\(vm.gratitudeTotal)",
+                        subtitle: "in the last \(selectedRange.days) days"
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 20, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+
+                    // Optional sparkline from daily buckets
+//                    SparklineView(values: vm.gratitudeSeries.map(Double.init))
+//                        .padding(.horizontal, 16)
+//                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 8, trailing: 16))
+//                        .listRowSeparator(.hidden)
+//                        .listRowBackground(Color.clear)
+                }
                 
+                // Tone Radar
                 Section {
                     let radarHeight: CGFloat = 280
                     
@@ -299,6 +318,8 @@ struct InsightsView: View {
                     await vm.loadHistory()
                     // Adding to sensitivity for Tone Radar to responsive for date changes
                     await vm.loadRadar(rangeDays: newValue.days)
+                    // Loading up user gratitude mentions
+                    await vm.loadGratitude(rangeDays: newValue.days)
                 }
             }
 
@@ -323,6 +344,32 @@ struct InsightsView: View {
 
 
 // MARK: - Components
+
+/// Gratitude Mention Card
+private struct GratitudeMentionsCard: View {
+    let title: String
+    let valueText: String
+    let subtitle: String
+    var icon: String = "heart"
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3.weight(.semibold))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.headline.bold())
+                Text(valueText)
+                    .font(.system(size: 44, weight: .heavy, design: .rounded))
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.thinMaterial))
+    }
+}
+
 
 /// Pretty header with icon + pill count
 private struct HistorySectionHeader: View {

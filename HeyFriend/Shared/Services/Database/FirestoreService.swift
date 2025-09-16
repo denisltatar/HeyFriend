@@ -50,6 +50,66 @@ final class FirestoreService {
             "transcriptText": transcript
         ], merge: true)
     }
+    
+    // MARK: - Gratitude counting (user utterances preferred)
+    private func countGratitudeMentions(userUtterances: [String]?) -> Int {
+        // If we were given explicit user lines, use them; else return 0 and the caller can fallback.
+        guard let lines = userUtterances, !lines.isEmpty else { return 0 }
+
+        let patterns: [NSRegularExpression] = [
+            try! NSRegularExpression(pattern: #"\bthanks?\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bthank\s+you\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bi(?:'m| am)?\s+grateful\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bi\s+appreciate(?:\s+(it|you|that))?\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bappreciation\b"#, options: [.caseInsensitive])
+        ]
+        let negation = try! NSRegularExpression(pattern: #"\b(not|nothing|don'?t|didn'?t)\b"#, options: [.caseInsensitive])
+
+        var total = 0
+        for raw in lines {
+            let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !s.isEmpty else { continue }
+            let full = NSRange(s.startIndex..<s.endIndex, in: s)
+
+            var lineCount = patterns.reduce(0) { acc, re in acc + re.numberOfMatches(in: s, range: full) }
+            if negation.firstMatch(in: s, range: full) != nil {
+                lineCount = max(0, lineCount - 1) // simple negation guard
+            }
+            total += lineCount
+        }
+        return total
+    }
+
+    /// Attempts to extract **user-only** utterances from the session doc.
+    /// Preferred: an array field `userUtterances: [String]`.
+    /// Fallback: split `transcriptText` by lines and keep those that look like the user (e.g. "You:", "User:")
+    private func extractUserUtterances(from sessionData: [String: Any]) -> [String] {
+        if let arr = sessionData["userUtterances"] as? [String] {
+            return arr
+        }
+        var userLines: [String] = []
+        if let txt = sessionData["transcriptText"] as? String {
+            // Heuristic: keep bare lines or lines prefixed as the user; drop assistant/bot lines.
+            let lines = txt.components(separatedBy: .newlines)
+            for l in lines {
+                let t = l.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { continue }
+                let lower = t.lowercased()
+                if lower.hasPrefix("assistant:") || lower.hasPrefix("bot:") || lower.hasPrefix("heyfriend:") {
+                    continue
+                }
+                // If transcript prefixes speakers, keep typical user prefixes:
+                if lower.hasPrefix("you:") || lower.hasPrefix("user:") || lower.hasPrefix("me:") {
+                    userLines.append(String(t.drop(while: { $0 != ":" }).dropFirst()).trimmingCharacters(in: .whitespaces))
+                } else {
+                    // If no prefixes in transcript, keep the line (best-effort).
+                    userLines.append(t)
+                }
+            }
+        }
+        return userLines
+    }
+
 
     /// Persist your SessionSummary (matches your existing struct)
     func writeSummaryBundle(
@@ -75,18 +135,27 @@ final class FirestoreService {
             ]
         }
         if let rec = mapped.recommendation { write["recommendation"] = rec }
+        
+        if mapped.gratitudeMentions > 0 {
+            write["gratitudeMentions"] = mapped.gratitudeMentions
+        }
 
         try await sessionRef(uid, sid).setData(write, merge: true)
 
         // Lightweight Insights list row
         var tones = [mapped.tone]
         if let extra = mapped.supportingTones { tones.append(contentsOf: extra) }
+        
+        let now = Date()
         try await insightSummariesRef(uid).document(sid).setData([
-            "createdAt": FieldValue.serverTimestamp(),
+            "createdAt": Timestamp(date: now),
+            "createdAtServer": FieldValue.serverTimestamp(),
             "summary": mapped.summary.first ?? mapped.tone,
             "topTones": tones,
-            "durationSec": durationSec
+            "durationSec": durationSec,
+            "gratitudeMentions": mapped.gratitudeMentions
         ], merge: true)
+        print("📝 FirestoreService: wrote insight_summaries/\(sid) gratitude=\(mapped.gratitudeMentions)")
     }
 
     // MARK: - Reads for Insights
@@ -120,13 +189,21 @@ final class FirestoreService {
         return snap.documents
     }
 
-    func listInsightSummariesInRange(uid: String, start: Date, end: Date) async throws -> [QueryDocumentSnapshot] {
-        let snap = try await insightSummariesRef(uid)
-            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: start))
-            .whereField("createdAt", isLessThanOrEqualTo: Timestamp(date: end))
-            .order(by: "createdAt", descending: false)
+    func listInsightSummariesInRange(uid: String, start: Date, endExclusive: Date) async throws -> [QueryDocumentSnapshot] {
+        let db = Firestore.firestore()
+        return try await db.collection("users").document(uid)
+            .collection("insight_summaries")
+            .whereField("createdAt", isGreaterThanOrEqualTo: start)
+            .whereField("createdAt", isLessThan: endExclusive)     // 👈 half-open window
+            .order(by: "createdAt")
             .getDocuments()
-        return snap.documents
+            .documents
+//        let snap = try await insightSummariesRef(uid)
+//            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: start))
+//            .whereField("createdAt", isLessThanOrEqualTo: Timestamp(date: end))
+//            .order(by: "createdAt", descending: false)
+//            .getDocuments()
+//        return snap.documents
     }
     
     

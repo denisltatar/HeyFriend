@@ -29,6 +29,12 @@ final class InsightsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var selectedSummary: SessionSummary?   // for navigation/sheet
+    
+    // Gratitude mentions
+    @Published var gratitudeTotal: Int = 0
+    @Published var gratitudeSeries: [Int] = []
+    @Published var isLoadingGratitude: Bool = false
+    @Published var gratitudeError: String?
 
     // Load recent insight_summaries (already created in writeSummaryBundle)
     func loadHistory(limit: Int = 50) async {
@@ -86,6 +92,7 @@ final class InsightsViewModel: ObservableObject {
             }
 
             let recommendation = data["recommendation"] as? String
+            let gratitude = (data["gratitudeMentions"] as? Int) ?? 0
 
             self.selectedSummary = SessionSummary(
                 id: sessionId,
@@ -95,7 +102,8 @@ final class InsightsViewModel: ObservableObject {
                 supportingTones: supportingTones,
                 toneNote: toneNote,
                 language: language,
-                recommendation: recommendation
+                recommendation: recommendation,
+                gratitudeMentions:gratitude
             )
         } catch {
             self.error = error.localizedDescription
@@ -248,8 +256,74 @@ extension InsightsViewModel {
     func refreshAll(rangeDays: Int) async {
         async let a: Void = loadHistory()
         async let b: Void = loadRadar(rangeDays: rangeDays)
-        _ = await (a, b)
+        async let c: Void = loadGratitude(rangeDays: rangeDays)
+        _ = await (a, b, c)
     }
+    
+    // Loading our gratitude mentions
+    func loadGratitude(rangeDays: Int) async {
+        guard let uid = AuthService.shared.userId else {
+            self.gratitudeError = "Not signed in."
+            self.gratitudeTotal = 0
+            self.gratitudeSeries = []
+            return
+        }
+
+        isLoadingGratitude = true
+        gratitudeError = nil
+        defer { isLoadingGratitude = false }
+
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        guard
+            let startDay = cal.date(byAdding: .day, value: -(rangeDays - 1), to: todayStart),
+            let endExclusive = cal.date(byAdding: .day, value: 1, to: todayStart)
+        else { return }
+
+        do {
+            // 👇 NOTE the label endExclusive: and the window that includes *today*
+            let docs = try await FirestoreService.shared.listInsightSummariesInRange(
+                uid: uid,
+                start: startDay,
+                endExclusive: endExclusive
+            )
+
+            var byDay: [Date: Int] = [:]
+            for d in docs {
+                let data = d.data()
+                let created = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                let day = cal.startOfDay(for: created)
+                let mentions = data["gratitudeMentions"] as? Int ?? 0
+                if mentions > 0 { byDay[day, default: 0] += mentions }
+            }
+
+            var series: [Int] = []
+            var total = 0
+            var cursor = startDay
+            for _ in 0..<rangeDays {
+                let v = byDay[cursor] ?? 0
+                series.append(v)
+                total += v
+                cursor = cal.date(byAdding: .day, value: 1, to: cursor)!
+            }
+
+            self.gratitudeSeries = series
+            self.gratitudeTotal = total
+            print("📊 InsightsVM: gratitudeTotal=\(total) over \(rangeDays)d (today included)")
+            // TEMP DEBUG: see what we got back
+            docs.forEach { d in
+                let data = d.data()
+                print("🔬 got summary doc",
+                      "createdAt=", (data["createdAt"] as? Timestamp)?.dateValue() ?? .distantPast,
+                      "gratitude=", data["gratitudeMentions"] as? Int ?? -1)
+            }
+        } catch {
+            self.gratitudeError = error.localizedDescription
+            self.gratitudeSeries = []
+            self.gratitudeTotal = 0
+        }
+    }
+
     
     // Loading our tone radar
     func loadRadar(rangeDays: Int) async {
@@ -263,12 +337,20 @@ extension InsightsViewModel {
         radarError = nil
         defer { isLoadingRadar = false }
 
-        let end = Date()
-        guard let start = Calendar.current.date(byAdding: .day, value: -rangeDays, to: end) else { return }
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        guard
+            let startDay = cal.date(byAdding: .day, value: -(rangeDays - 1), to: todayStart),
+            let endExclusive = cal.date(byAdding: .day, value: 1, to: todayStart)
+        else { return }
 
         do {
-            async let sDocs = FirestoreService.shared.listSessionsInRange(uid: uid, start: start, end: end)
-            async let iDocs = FirestoreService.shared.listInsightSummariesInRange(uid: uid, start: start, end: end)
+            async let sDocs = FirestoreService.shared.listSessionsInRange(
+                uid: uid, start: startDay, end: endExclusive
+            )
+            async let iDocs = FirestoreService.shared.listInsightSummariesInRange(
+                uid: uid, start: startDay, endExclusive: endExclusive
+            )
 
             let (sessionsRaw, summariesRaw) = try await (sDocs, iDocs)
             let sessions = sessionsRaw.map { SessionDocDTO($0.data()) }
@@ -280,5 +362,6 @@ extension InsightsViewModel {
             self.radarPoints = []
         }
     }
+
 }
 
