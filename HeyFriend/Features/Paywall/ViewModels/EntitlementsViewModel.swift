@@ -20,6 +20,9 @@ final class EntitlementsViewModel: ObservableObject {
     private var listener: ListenerRegistration?
     private var cancellables = Set<AnyCancellable>()
     
+    @Published private(set) var productId: String? = nil
+    @Published private(set) var expiresAt: Date? = nil
+    
     func start() {
         // 1) React to auth changes
         AuthService.shared.$userId
@@ -56,10 +59,12 @@ final class EntitlementsViewModel: ObservableObject {
             listener = FirestoreService.shared.observeEntitlements(uid: uid) { [weak self] dto in
                 guard let self, let dto else { return }
                 DispatchQueue.main.async {
-                    self.plan = dto.plan
-                    self.freeUsed = dto.freeSessionsUsed
+                    self.plan      = dto.plan
+                    self.freeUsed  = dto.freeSessionsUsed
                     self.freeLimit = dto.freeLimit
-                    self.isLoaded = true
+                    self.productId = dto.productId
+                    self.expiresAt = dto.expiresAt?.dateValue()
+                    self.isLoaded  = true
                 }
             }
         }

@@ -43,50 +43,146 @@ struct PaywallView: View {
     @State private var products: [Product] = []
     private var monthlyProduct: Product? { products.first { $0.id == IAP.monthlyID } }
     private var yearlyProduct: Product?  { products.first { $0.id == IAP.yearlyID  } }
+    
+    // Plus Status (for nicer "You're on Plus" UI)
+    @State private var plusProductId: String?
+    @State private var plusExpiresAt: Date?
+    
+    // Entitlement VM
+    @StateObject private var entitlementsVM = EntitlementsViewModel()
 
     var body: some View {
         ZStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Header
-                    VStack(spacing: 8) {
-                        (Text("Upgrade to ") + Text("Plus").italic().foregroundStyle(Brand.orange))
-                            .font(.system(size: 32, weight: .bold))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top, 30)
-
-                    FeatureList()
-
-                    PricingPicker(
-                        selected: $selectedPlan,
-                        yearlyPrice: yearlyProduct?.displayPrice,
-                        monthlyPrice: monthlyProduct?.displayPrice
-                    )
-
-                    CTASection(
-                        selectedPlan: selectedPlan,
-                        isPurchasing: isPurchasing,
-                        errorText: errorText,
-                        purchaseAction: { plan in
-                            Task { await purchaseSelected(plan) }
-                        },
-                        restoreAction: {
-                            Task { await restorePurchases() }
+                if hasPlus {
+                    // MARK: - Subscribed UI
+                    VStack(spacing: 20) {
+                        // Header
+                        VStack(spacing: 8) {
+                            Text("You’re on ")
+                                .font(.system(size: 32, weight: .bold)) +
+                            Text("Plus").italic().foregroundStyle(Brand.orange)
+                                .font(.system(size: 32, weight: .bold))
                         }
-                    )
-                    .padding(.top, 6)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 30)
 
-                    LegalLinks()
+                        // Status Card
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Label(plusPlanLabel, systemImage: "sparkles")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "checkmark.seal.fill")
+                                    .imageScale(.large)
+                                    .foregroundStyle(Brand.orange)
+                            }
+
+                            Divider().opacity(0.25)
+
+                            HStack(spacing: 10) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .foregroundStyle(.secondary)
+                                Text(plusRenewalLabel)
+                                    .foregroundStyle(.secondary)
+                                    .font(.subheadline)
+                            }
+
+                            if let pid = plusProductId {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "number")
+                                        .foregroundStyle(.secondary)
+                                    Text(pid)
+                                        .foregroundStyle(.secondary)
+                                        .font(.footnote.monospaced())
+                                }
+                            }
+                        }
+                        .padding(16)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(Brand.orange.opacity(0.15), lineWidth: 1)
+                        )
+
+                        // Your benefits (reuse the same component for visual parity)
+                        FeatureList()
+
+                        // Actions
+                        VStack(spacing: 10) {
+                            Button {
+                                openManageSubscriptions()
+                            } label: {
+                                Text("Manage Subscription")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryGradientButtonStyle())
+
+                            Button("Restore Purchases") {
+                                Task {
+                                    await restorePurchases()
+                                    await refreshPlusStatus()
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                        }
                         .padding(.top, 6)
+
+                        LegalLinks()
+                            .padding(.top, 6)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                    .onAppear {
+                        // light haptic when viewing status
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } else {
+                    // Existing upgrade flow (your current VStack with FeatureList, PricingPicker, CTASection, LegalLinks)
+                    VStack(spacing: 20) {
+                        VStack(spacing: 8) {
+                            (Text("Upgrade to ") + Text("Plus").italic().foregroundStyle(Brand.orange))
+                                .font(.system(size: 32, weight: .bold))
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.top, 30)
+
+                        FeatureList()
+                        PricingPicker(
+                            selected: $selectedPlan,
+                            yearlyPrice: yearlyProduct?.displayPrice,
+                            monthlyPrice: monthlyProduct?.displayPrice
+                        )
+                        CTASection(
+                            selectedPlan: selectedPlan,
+                            isPurchasing: isPurchasing,
+                            errorText: errorText,
+                            purchaseAction: { plan in Task { await purchaseSelected(plan) } },
+                            restoreAction: { Task { await restorePurchases() } }
+                        )
+                        .padding(.top, 6)
+                        LegalLinks()
+                            .padding(.top, 6)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+
             }
         }
         .task {
+            // Obtaining entitlements to update paywall/settings
+            entitlementsVM.start()
             await loadProducts()
             await observeTransactionUpdates()
+            if hasPlus {
+                await refreshPlusStatus()
+            }
+        }
+        .onDisappear {
+            entitlementsVM.stop()
         }
         .onChange(of: hasPlus) { new in
             if new { dismiss() }
@@ -208,6 +304,58 @@ struct PaywallView: View {
             return safe
         }
     }
+    
+    // MARK: - Plus Status (for nicer "You're on Plus" UI)
+
+    private func refreshPlusStatus() async {
+        // Scan active entitlements and capture our Plus line item
+        for await result in Transaction.currentEntitlements {
+            if let tx = try? checkVerified(result) {
+                guard tx.productType == .autoRenewable else { continue }
+                let isPlus = (tx.productID == IAP.monthlyID) || (tx.productID == IAP.yearlyID)
+                guard isPlus, tx.revocationDate == nil, (tx.expirationDate ?? .distantFuture) > Date() else { continue }
+                await MainActor.run {
+                    self.plusProductId = tx.productID
+                    self.plusExpiresAt = tx.expirationDate
+                }
+            }
+        }
+    }
+
+    private var resolvedProductId: String? {
+        // Prefer live StoreKit; fall back to Firestore VM
+        plusProductId ?? entitlementsVM.productId
+    }
+
+    private var resolvedExpiresAt: Date? {
+        plusExpiresAt ?? entitlementsVM.expiresAt
+    }
+
+    private var plusPlanLabel: String {
+        switch resolvedProductId {
+        case IAP.yearlyID?:  return "Plus • Yearly"
+        case IAP.monthlyID?: return "Plus • Monthly"
+        case .some:          return "Plus"
+        case .none:          return "Plus"
+        }
+    }
+
+    private var plusRenewalLabel: String {
+        if let exp = resolvedExpiresAt {
+            return "Renews on \(exp.formatted(date: .long, time: .omitted))"
+        }
+        return "Auto-renewing"
+    }
+
+    private func openManageSubscriptions() {
+        if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+            UIApplication.shared.open(url)
+        }
+    }
+
+
+
+    
 }
 
 // MARK: - Components
@@ -367,7 +515,7 @@ private struct LegalLinks: View {
             HStack(spacing: 12) {
                 Link("Privacy Policy", destination: URL(string: "https://heyfriend-website.vercel.app/privacy")!)
                 // Deep link to Apple subscription management
-                Link("Manage Subscription", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
+//                Link("Manage Subscription", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
             }
             .font(.footnote)
         }

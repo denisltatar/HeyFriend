@@ -22,6 +22,7 @@ struct SettingsView: View {
     
     // Trial/Plus state
     @StateObject private var entitlements = EntitlementsViewModel()
+    @AppStorage("hf.hasPlus") private var hasPlus = false   // ← added as a quick fallback
 
     // Persisted settings
     @AppStorage(SettingsKeys.requireBiometricsForInsights) private var requireBiometrics = false
@@ -29,6 +30,7 @@ struct SettingsView: View {
     
     // Paywall display
     @State private var showPaywall = false
+    
     
     private var appearanceBinding: Binding<AppAppearance> {
         Binding(
@@ -76,17 +78,46 @@ struct SettingsView: View {
 
                 // 💳 Subscription / Billing
                 Section("Subscription") {
+                    if entitlements.isPlus {
+                        Button {
+                            if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                                openURL(url)
+                            }
+                        } label: {
+                            Label("Manage Plus Subscription", systemImage: "sparkles")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.primary)
+                    } else {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showPaywall = true
+                        } label: {
+                            Label("Upgrade to Plus", systemImage: "sparkles")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.primary)
+                    }
+                    
                     Button {
-                        // TODO: Present paywall / Plus screen
-                        // e.g., show a sheet or navigate to a PaywallView()
-                        // For now, just haptic feedback or placeholder
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        showPaywall = true
+                        showPaywall = true   // reuse your existing sheet
                     } label: {
-                        Label("Upgrade to Plus", systemImage: "sparkles")
+                        Label("View your plan", systemImage: "person.badge.shield.checkmark")
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.primary)
+
+//                    Button {
+//                        // TODO: Present paywall / Plus screen
+//                        // e.g., show a sheet or navigate to a PaywallView()
+//                        // For now, just haptic feedback or placeholder
+//                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+//                        showPaywall = true
+//                    } label: {
+//                        Label("Upgrade to Plus", systemImage: "sparkles")
+//                    }
+//                    .buttonStyle(.plain)
+//                    .foregroundStyle(.primary)
                     
 //                    FreeSessionsPill(
 //                        isPlus: entitlements.isPlus,
@@ -184,6 +215,8 @@ struct SettingsView: View {
 //                .padding()
 //            }
         }
+        .task { entitlements.start() }          // ← start listening
+        .onDisappear { entitlements.stop() }    // ← optional: clean up
     }
 }
 
