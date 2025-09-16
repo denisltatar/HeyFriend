@@ -196,8 +196,14 @@ struct InsightsView: View {
                     let radarHeight: CGFloat = 280
                     
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Tone Radar")
-                            .font(.headline.bold())
+                        HStack(spacing: 8) {
+                            Image(systemName: "theatermasks")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.orange)
+                            Text("Tone Radar")
+                                .font(.headline.bold())
+                        }
+
                         Text("Distribution across your selected period")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -230,6 +236,17 @@ struct InsightsView: View {
                     .listRowBackground(Color.clear)
                 }
 
+                // Language Patterns
+                Section {
+                    LanguagePatternsCard(
+                        themes: vm.commonThemes,
+                        focusTitle: vm.focusTitle,
+                        focusDescription: vm.focusDescription
+                    )
+                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 0, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
 
                 // History list
                 Section {
@@ -320,6 +337,8 @@ struct InsightsView: View {
                     await vm.loadRadar(rangeDays: newValue.days)
                     // Loading up user gratitude mentions
                     await vm.loadGratitude(rangeDays: newValue.days)
+                    // Loading language patterns
+                    await vm.loadLanguagePatterns(rangeDays: newValue.days)
                 }
             }
 
@@ -345,6 +364,7 @@ struct InsightsView: View {
 
 // MARK: - Components
 
+// MARK: - Gratitude Mentions
 /// Gratitude Mention Card
 private struct GratitudeMentionsCard: View {
     let title: String
@@ -383,6 +403,140 @@ private struct GratitudeMentionsCard: View {
     }
 }
 
+// MARK: - Language Patterns
+
+/// Language Patterns Card
+private struct LanguagePatternsCard: View {
+    let themes: [String]
+    let focusTitle: String?
+    let focusDescription: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            
+            // Title + brain icon
+           HStack(spacing: 8) {
+               Image(systemName: "brain.head.profile")
+                   .font(.title3.weight(.semibold))
+                   .foregroundStyle(.purple)   // tweak to brand color if you want
+               Text("Language Patterns")
+                   .font(.headline.bold())
+           }
+
+            // Common Themes pills
+            if themes.isEmpty {
+                Text("No recurring themes yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                // Wrap pills
+                SimplePills(items: themes.prefix(6).map { $0.capitalized })
+
+            }
+
+            Divider().padding(.vertical, 4)
+
+            // Focus snippet
+            if let title = focusTitle, let desc = focusDescription, !title.isEmpty, !desc.isEmpty {
+                Text(title).font(.subheadline.bold())
+                Text(desc).font(.footnote).foregroundStyle(.secondary)
+            } else {
+                Text("Focus Spotlight").font(.subheadline.bold())
+                Text("We’ll surface a short theme to keep in mind based on your recent sessions.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16).fill(.thinMaterial))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.06), lineWidth: 1))
+    }
+}
+
+private struct SimplePills: View {
+    let items: [String]
+    var minWidth: CGFloat = 140     // pill min width; tweak to taste
+    var hSpacing: CGFloat = 6
+    var vSpacing: CGFloat = 6
+
+    var body: some View {
+        // 🔧 max == min → cells won’t stretch, so no extra space between pills
+        let cols = [GridItem(.adaptive(minimum: minWidth, maximum: minWidth),
+                             spacing: hSpacing,
+                             alignment: .leading)]
+
+        LazyVGrid(columns: cols, alignment: .leading, spacing: vSpacing) {
+            ForEach(items, id: \.self) { text in
+                Text(text)
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.purple.opacity(0.12)))
+                    .overlay(Capsule().stroke(Color.purple.opacity(0.25), lineWidth: 1))
+            }
+        }
+    }
+}
+
+
+//private struct FlexiblePills: View {
+//    let items: [String]
+//    var hSpacing: CGFloat = 8
+//    var vSpacing: CGFloat = 8
+//    @State private var totalHeight: CGFloat = .zero
+//
+//    var body: some View {
+//        GeometryReader { geo in
+//            ZStack(alignment: .topLeading) {
+//                var currentX: CGFloat = 0
+//                var currentY: CGFloat = 0
+//
+//                ForEach(items, id: \.self) { text in
+//                    pill(for: text)
+//                        .alignmentGuide(.leading) { d in
+//                            if currentX + d.width > geo.size.width {
+//                                // wrap to next line
+//                                currentX = 0
+//                                currentY -= (d.height + vSpacing)
+//                            }
+//                            let result = currentX
+//                            currentX += (d.width + hSpacing)
+//                            return result
+//                        }
+//                        .alignmentGuide(.top) { d in
+//                            let result = currentY
+//                            return result
+//                        }
+//                }
+//            }
+//            .background(heightReader($totalHeight))
+//        }
+//        .frame(height: totalHeight) // let measured height prevent overlap
+//    }
+//
+//    private func pill(for text: String) -> some View {
+//        Text(text)
+//            .font(.caption.weight(.medium))
+//            .padding(.horizontal, 10)
+//            .padding(.vertical, 7) // a hair more vertical padding
+//            .background(Capsule().fill(Color.orange.opacity(0.12)))
+//            .overlay(Capsule().stroke(Color.orange.opacity(0.25), lineWidth: 1))
+//    }
+//
+//    // Measures the ZStack so the container’s height expands correctly.
+//    private func heightReader(_ binding: Binding<CGFloat>) -> some View {
+//        GeometryReader { proxy in
+//            Color.clear
+//                .onAppear   { binding.wrappedValue = proxy.size.height }
+//                .onChange(of: proxy.size.height) { _, new in binding.wrappedValue = new }
+//        }
+//    }
+//}
+
+
+
+
+
+// MARK: - History
 
 /// Pretty header with icon + pill count
 private struct HistorySectionHeader: View {
@@ -653,6 +807,7 @@ private struct ToneStatPill: View {
 }
 
 // MARK: - Radar Chart
+
 struct RadarChart: View {
     /// Set once; keeps axes locked in this order forever.
     let axesOrder: [String]                 // e.g. ["Calm","Hopeful","Reflective","Anxious","Stressed"]

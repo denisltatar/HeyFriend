@@ -6,10 +6,9 @@
 //
 
 import Foundation
-
-import Foundation
 import FirebaseFirestore
 import SwiftUI
+import CryptoKit
 
 @MainActor
 final class InsightsViewModel: ObservableObject {
@@ -35,6 +34,14 @@ final class InsightsViewModel: ObservableObject {
     @Published var gratitudeSeries: [Int] = []
     @Published var isLoadingGratitude: Bool = false
     @Published var gratitudeError: String?
+    
+    // Language Patterns / Focus Snippet
+    @Published var commonThemes: [String] = []      // 2–4 short tags like "Growth mindset"
+    @Published var focusTitle: String? = nil        // e.g., "Distortion Awareness"
+    @Published var focusDescription: String? = nil  // 1–2 sentences, NOT the long 'recommendation'
+    @Published var isLoadingLanguage: Bool = false
+    @Published var languageError: String? = nil
+
 
     // Load recent insight_summaries (already created in writeSummaryBundle)
     func loadHistory(limit: Int = 50) async {
@@ -257,8 +264,11 @@ extension InsightsViewModel {
         async let a: Void = loadHistory()
         async let b: Void = loadRadar(rangeDays: rangeDays)
         async let c: Void = loadGratitude(rangeDays: rangeDays)
-        _ = await (a, b, c)
+        async let d: Void = loadLanguagePatterns(rangeDays: rangeDays)
+        _ = await (a, b, c, d)
     }
+    
+    // MARK: - Loading Gratitude Mentions
     
     // Loading our gratitude mentions
     func loadGratitude(rangeDays: Int) async {
@@ -324,6 +334,7 @@ extension InsightsViewModel {
         }
     }
 
+    // MARK: - Loading Tone Radar
     
     // Loading our tone radar
     func loadRadar(rangeDays: Int) async {
@@ -362,6 +373,122 @@ extension InsightsViewModel {
             self.radarPoints = []
         }
     }
+    
+    // MARK: - Loading Language Patterns
+    
+    // Important for caching Language Patterns
+    func sha256(_ s: String) -> String {
+        let d = SHA256.hash(data: Data(s.utf8))
+        return d.compactMap { String(format: "%02x", $0) }.joined()
+    }
+    
+    // Range finder
+    private func rangeStartEnd(forDays rangeDays: Int) -> (start: Date, endExclusive: Date) {
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: Date())
+        let start = cal.date(byAdding: .day, value: -(rangeDays - 1), to: todayStart) ?? todayStart
+        let endExclusive = cal.date(byAdding: .day, value: 1, to: todayStart) ?? Date()
+        return (start, endExclusive)
+    }
+    
+    // Short bullets from insight_summaries (kept tiny for prompt)
+    private func fetchBullets(rangeDays: Int) async -> [String] {
+        guard let uid = AuthService.shared.userId else { return [] }
+        let (start, endEx) = rangeStartEnd(forDays: rangeDays)
+        do {
+            let docs = try await FirestoreService.shared
+                .listInsightSummariesInRange(uid: uid, start: start, endExclusive: endEx)
+            var out: [String] = []
+            for d in docs {
+                let data = d.data()
+                if let s = data["summary"] as? String, !s.isEmpty {
+                    out.append(s)
+                } else if let arr = data["summary"] as? [String], !arr.isEmpty {
+                    out.append(contentsOf: arr.prefix(2))
+                }
+            }
+            return Array(out.prefix(24)) // cap for speed/cost
+        } catch {
+            print("fetchBullets error: \(error)")
+            return []
+        }
+    }
+
+    // Compact language signals from sessions/lang object
+    private func fetchSignals(rangeDays: Int) async -> [[String: Any]] {
+        guard let uid = AuthService.shared.userId else { return [] }
+        let (start, endEx) = rangeStartEnd(forDays: rangeDays)
+        do {
+            let sessions = try await FirestoreService.shared
+                .listSessionsInRange(uid: uid, start: start, end: endEx)
+
+            var out: [[String: Any]] = []
+            for s in sessions {
+                let data = s.data()
+                if let lang = data["language"] as? [String: Any] {
+                    var item: [String: Any] = [:]
+                    if let r = lang["repeatedWords"] as? [String], !r.isEmpty { item["repeated"] = Array(r.prefix(5)) }
+                    if let t = lang["thinkingStyle"] as? String, !t.isEmpty { item["thinking"] = t }
+                    if let e = lang["emotionalIndicators"] as? String, !e.isEmpty { item["emotional"] = e }
+                    if !item.isEmpty { out.append(item) }
+                }
+            }
+            return Array(out.prefix(24))
+        } catch {
+            print("fetchSignals error: \(error)")
+            return []
+        }
+    }
+
+    
+    // Loading our language patterns
+    func loadLanguagePatterns(rangeDays: Int) async {
+        guard let uid = AuthService.shared.userId else { return }
+
+        isLoadingLanguage = true
+        defer { isLoadingLanguage = false }
+
+        // 1) Build the exact, small inputs you’d send to GPT (bullets+signals)
+        let bullets = await fetchBullets(rangeDays: rangeDays)   // your existing logic
+        let signals = await fetchSignals(rangeDays: rangeDays)   // your existing logic
+
+        // 2) Make a digest that changes only when inputs change
+        let inputString = "range:\(rangeDays)\nB:\(bullets.joined(separator: "|"))\nS:\(signals.debugDescription)"
+        let digest = sha256(inputString)
+
+        // 3) Try Firestore cache first
+        if let cached = try? await FirestoreService.shared.readLanguageCache(uid: uid, rangeDays: rangeDays),
+           cached.digest == digest {
+            self.commonThemes = cached.themes
+            self.focusTitle = cached.focusTitle
+            self.focusDescription = cached.focusDescription
+            return
+        }
+
+        // 4) No valid cache → call GPT
+        if let res = await ChatService.shared.generateLanguageThemesAndFocus(
+            bullets: bullets,
+            signals: signals
+        ) {
+            self.commonThemes = res.themes
+            self.focusTitle = res.focus_title
+            self.focusDescription = res.focus_description
+
+            // 5) Write cache
+            let toSave = FirestoreService.LanguageCache(
+                themes: res.themes,
+                focusTitle: res.focus_title,
+                focusDescription: res.focus_description,
+                digest: digest,
+                updatedAt: Timestamp(date: Date())
+            )
+            try? await FirestoreService.shared.writeLanguageCache(uid: uid, rangeDays: rangeDays, cache: toSave)
+        } else {
+            // fall back (keep old UI, don’t thrash)
+        }
+    }
+
+    
 
 }
 
