@@ -219,8 +219,7 @@ extension ChatService {
         }.resume()
     }
     
-    
-    // MARK: Language patterns (on insights page)
+    // MARK: - Language Patterns Cache Response
     
     // Struct for language patterns found on Insights page!
     struct LanguageThemesResponse: Codable {
@@ -231,51 +230,117 @@ extension ChatService {
     
     // Generating theme and focus on Language Patterns
     func generateLanguageThemesAndFocus(
+        bullets: [String],
+        signals: [[String: Any]]
+    ) async -> LanguageThemesResponse? {
+        guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !apiKey.isEmpty else {
+            print("Missing API key.")
+            return nil
+        }
+
+        // Keep input small
+        let joinedBullets = bullets.prefix(24).map { "• \($0)" }.joined(separator: "\n")
+        let trimmedSignals: [[String: Any]] = signals.prefix(24).map { s in
+            var out: [String: Any] = [:]
+            if let r = s["repeated"] as? [String], !r.isEmpty { out["repeated"] = Array(r.prefix(5)) }
+            if let t = s["thinking"] as? String, !t.isEmpty { out["thinking"] = t }
+            if let e = s["emotional"] as? String, !e.isEmpty { out["emotional"] = e }
+            return out
+        }
+
+        let system =
+        """
+        You are a careful summarizer. Extract compact themes and a brief focus snippet from short bullets and language signals.
+        Keep it neutral, supportive, non-clinical. Output STRICT minified JSON only.
+        """
+
+        let user =
+        """
+        DATA
+        - Bullets:
+        \(joinedBullets)
+
+        - Language signals (each item may include repeated words, thinking style, emotional indicators):
+        \(trimmedSignals)
+
+        TASK
+        1) THEMES: Return 2–4 concise tags that capture recurring subject matter or approach (e.g., "Growth mindset", "Future planning", "Relationships", etc...).
+           - Avoid clinical terms; avoid verbs; keep each ≤ 2–3 words.
+        2) FOCUS: A short, helpful spotlight (NOT an action plan and NOT the per-session personalized recommendation).
+           - Provide a title (≤ 4 words) and a 1–2 sentence supportive description that normalizes and gently orients attention.
+
+        JSON SHAPE
+        {
+          "themes": ["<2–4 short tags>"],
+          "focus_title": "<short title>",
+          "focus_description": "<1–2 sentences>"
+        }
+        """
+
+        var req = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "model": "gpt-4o",
+            "messages": [
+                ["role": "system", "content": system],
+                ["role": "user",   "content": user]
+            ],
+            "temperature": 0.2
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: req)
+            guard
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let choices = json["choices"] as? [[String: Any]],
+                let msg = choices.first?["message"] as? [String: Any],
+                var content = msg["content"] as? String
+            else { return nil }
+
+            content = content.replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "")
+            guard let raw = content.data(using: .utf8) else { return nil }
+            let parsed = try JSONDecoder().decode(LanguageThemesResponse.self, from: raw)
+            return parsed
+        } catch {
+            print("generateLanguageThemesAndFocus error: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // MARK: - Personal Recommendation Cache Response
+    
+    struct RecommendationResponse: Codable { let title: String; let body: String }
+        func generatePersonalizedRecommendation(
             bullets: [String],
-            signals: [[String: Any]]
-        ) async -> LanguageThemesResponse? {
-            guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !apiKey.isEmpty else {
-                print("Missing API key.")
-                return nil
-            }
+            signals: [[String: Any]],
+            gratitudeTotal: Int,
+            topTone: String,
+            lastTitle: String
+        ) async -> RecommendationResponse? {
+            guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !apiKey.isEmpty else { return nil }
 
-            // Keep input small
-            let joinedBullets = bullets.prefix(24).map { "• \($0)" }.joined(separator: "\n")
-            let trimmedSignals: [[String: Any]] = signals.prefix(24).map { s in
-                var out: [String: Any] = [:]
-                if let r = s["repeated"] as? [String], !r.isEmpty { out["repeated"] = Array(r.prefix(5)) }
-                if let t = s["thinking"] as? String, !t.isEmpty { out["thinking"] = t }
-                if let e = s["emotional"] as? String, !e.isEmpty { out["emotional"] = e }
-                return out
-            }
-
-            let system =
-            """
-            You are a careful summarizer. Extract compact themes and a brief focus snippet from short bullets and language signals.
-            Keep it neutral, supportive, non-clinical. Output STRICT minified JSON only.
+            let system = """
+            You produce short, supportive, non-clinical, *actionable* recommendations.
+            Output ONLY minified JSON.
             """
 
-            let user =
-            """
-            DATA
-            - Bullets:
-            \(joinedBullets)
+            let user = """
+            CONTEXT
+            - Bullets (recent insights): \(bullets.prefix(16))
+            - Language signals: \(signals.prefix(16))
+            - GratitudeTotal: \(gratitudeTotal)
+            - TopTone: \(topTone)
+            - Avoid repeating previous title: \(lastTitle)
 
-            - Language signals (each item may include repeated words, thinking style, emotional indicators):
-            \(trimmedSignals)
+            REQUIREMENTS
+            - Title ≤ 5 words, imperative or encouraging.
+            - Body 1–2 sentences, specific and time-boxed (e.g., "2 minutes tonight…").
+            - Friendly, non-judgmental, no therapy/diagnosis terms.
 
-            TASK
-            1) THEMES: Return 2–4 concise tags that capture recurring subject matter or approach (e.g., "Growth mindset", "Future planning", "Relationships", etc...).
-               - Avoid clinical terms; avoid verbs; keep each ≤ 2–3 words.
-            2) FOCUS: A short, helpful spotlight (NOT an action plan and NOT the per-session personalized recommendation).
-               - Provide a title (≤ 4 words) and a 1–2 sentence supportive description that normalizes and gently orients attention.
-
-            JSON SHAPE
-            {
-              "themes": ["<2–4 short tags>"],
-              "focus_title": "<short title>",
-              "focus_description": "<1–2 sentences>"
-            }
+            JSON SHAPE: {"title":"...", "body":"..."}
             """
 
             var req = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
@@ -284,33 +349,27 @@ extension ChatService {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             let body: [String: Any] = [
                 "model": "gpt-4o",
+                "temperature": 0.3,
                 "messages": [
-                    ["role": "system", "content": system],
-                    ["role": "user",   "content": user]
-                ],
-                "temperature": 0.2
+                    ["role":"system","content":system],
+                    ["role":"user","content":user]
+                ]
             ]
             req.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
             do {
                 let (data, _) = try await URLSession.shared.data(for: req)
                 guard
-                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                    let choices = json["choices"] as? [[String: Any]],
+                    let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                    let choices = root["choices"] as? [[String: Any]],
                     let msg = choices.first?["message"] as? [String: Any],
                     var content = msg["content"] as? String
                 else { return nil }
-
                 content = content.replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "")
-                guard let raw = content.data(using: .utf8) else { return nil }
-                let parsed = try JSONDecoder().decode(LanguageThemesResponse.self, from: raw)
-                return parsed
-            } catch {
-                print("generateLanguageThemesAndFocus error: \(error.localizedDescription)")
-                return nil
-            }
+                let decoded = try JSONDecoder().decode(RecommendationResponse.self, from: Data(content.utf8))
+                return decoded
+            } catch { return nil }
         }
-    
     
     
 }

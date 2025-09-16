@@ -388,6 +388,42 @@ final class FirestoreService {
     }
 
     
+    // MARK: - Recommendation cache
+    
+    private func recCacheRef(_ uid: String) -> DocumentReference {
+        userRef(uid).collection("meta").document("recommendation_cache")
+    }
+
+    struct RecommendationCache: Codable {
+        var title: String
+        var body: String
+        var digest: String
+        var updatedAt: Date?
+    }
+
+    func readRecommendationCache(uid: String, rangeDays: Int) async throws -> RecommendationCache? {
+        let snap = try await recCacheRef(uid).getDocument()
+        guard let map = snap.data()?["r\(rangeDays)"] as? [String: Any] else { return nil }
+        guard
+            let title = map["title"] as? String,
+            let body = map["body"] as? String,
+            let digest = map["digest"] as? String
+        else { return nil }
+        let updatedAt = (map["updatedAt"] as? Timestamp)?.dateValue()
+        return RecommendationCache(title: title, body: body, digest: digest, updatedAt: updatedAt)
+    }
+
+    func writeRecommendationCache(uid: String, rangeDays: Int, cache: RecommendationCache) async throws {
+        let dict: [String: Any] = [
+            "title": cache.title,
+            "body": cache.body,
+            "digest": cache.digest,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await recCacheRef(uid).setData(["r\(rangeDays)": dict], merge: true)
+    }
+
+    
     
 }
 

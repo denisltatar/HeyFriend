@@ -154,23 +154,9 @@ struct InsightsView: View {
                 // Header + Range Selector
                 Section {
                     InsightsHeader(selected: $selectedRange)
-//                        .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-//                        .padding(.horizontal, )
                 }
-
-                // Tone Card Trends
-//                Section {
-//                    ToneTrendsCard(
-//                        stats: [
-//                            ToneStat(label: "Calm",      percent: 0.45, delta:  0.10, color: .teal),
-//                            ToneStat(label: "Hopeful",   percent: 0.32, delta:  0.00, color: .orange), // brand tone
-//                            ToneStat(label: "Reflective",percent: 0.23, delta: -0.07, color: .indigo)
-//                        ],
-//                        weekSeries: [0.26, 0.31, 0.28, 0.40, 0.38, 0.45, 0.47] // sample data
-//                    )
-//                }
                 
                 // Gratitude Mentions
                 Section {
@@ -182,13 +168,6 @@ struct InsightsView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 20, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
-
-                    // Optional sparkline from daily buckets
-//                    SparklineView(values: vm.gratitudeSeries.map(Double.init))
-//                        .padding(.horizontal, 16)
-//                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 8, trailing: 16))
-//                        .listRowSeparator(.hidden)
-//                        .listRowBackground(Color.clear)
                 }
                 
                 // Tone Radar
@@ -244,9 +223,6 @@ struct InsightsView: View {
                         focusDescription: vm.focusDescription,
                         isLoading: vm.isLoadingLanguage
                     )
-//                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 20, trailing: 16))
-//                    .listRowSeparator(.hidden)
-//                    .listRowBackground(Color.clear)
                     // ⬇️ Let the card own its spacing
                     .padding(.horizontal, 16)
                     .padding(.top, 22)
@@ -255,6 +231,22 @@ struct InsightsView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
+                
+                // Personal Recommendations
+                Section {
+                    RecommendationCard(
+                        title: vm.recTitle,
+                        message: vm.recBody,
+                        isLoading: vm.isLoadingRecommendation
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 20)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+
 
                 // History list
                 Section {
@@ -350,6 +342,8 @@ struct InsightsView: View {
                     await vm.loadGratitude(rangeDays: newValue.days)
                     // Loading language patterns
                     await vm.loadLanguagePatterns(rangeDays: newValue.days)
+                    // Loading personal recommendations
+                    await vm.loadPersonalRecommendation(rangeDays: newValue.days)
                 }
             }
 
@@ -993,3 +987,56 @@ private struct EmptyRadarState: View {
         .frame(maxWidth: .infinity, minHeight: 150) // nice presence in the card
     }
 }
+
+// MARK: - Personal Recommendations
+/// Personalized Recommendation Card
+private struct RecommendationCard: View {
+    let title: String?
+    let message: String?
+    var isLoading: Bool = false
+
+    var body: some View {
+        ZStack {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.title2.weight(.semibold))
+//                        .foregroundStyle(Color.yellow)
+                        .foregroundStyle(Color.green)
+                    Text("Personalized Recommendation")
+                        .font(.headline.bold())
+                }
+
+                Text(title?.isEmpty == false ? title! : "We’re preparing your tip…")
+                    .font(.subheadline.weight(.semibold))
+
+                if let message, !message.isEmpty {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+//                    .fill(Color.yellow.opacity(0.12))
+                    .fill(Color.green.opacity(0.12))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+//                    .stroke(Color.yellow.opacity(0.25), lineWidth: 1)
+                    .stroke(Color.green.opacity(0.25), lineWidth: 1)
+            )
+
+            if isLoading {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .overlay(ProgressView().controlSize(.small))
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
