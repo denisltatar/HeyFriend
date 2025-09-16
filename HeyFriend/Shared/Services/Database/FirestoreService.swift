@@ -52,33 +52,33 @@ final class FirestoreService {
     }
     
     // MARK: - Gratitude counting (user utterances preferred)
-    private func countGratitudeMentions(userUtterances: [String]?) -> Int {
-        // If we were given explicit user lines, use them; else return 0 and the caller can fallback.
-        guard let lines = userUtterances, !lines.isEmpty else { return 0 }
-
-        let patterns: [NSRegularExpression] = [
-            try! NSRegularExpression(pattern: #"\bthanks?\b"#, options: [.caseInsensitive]),
-            try! NSRegularExpression(pattern: #"\bthank\s+you\b"#, options: [.caseInsensitive]),
-            try! NSRegularExpression(pattern: #"\bi(?:'m| am)?\s+grateful\b"#, options: [.caseInsensitive]),
-            try! NSRegularExpression(pattern: #"\bi\s+appreciate(?:\s+(it|you|that))?\b"#, options: [.caseInsensitive]),
-            try! NSRegularExpression(pattern: #"\bappreciation\b"#, options: [.caseInsensitive])
-        ]
-        let negation = try! NSRegularExpression(pattern: #"\b(not|nothing|don'?t|didn'?t)\b"#, options: [.caseInsensitive])
-
-        var total = 0
-        for raw in lines {
-            let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !s.isEmpty else { continue }
-            let full = NSRange(s.startIndex..<s.endIndex, in: s)
-
-            var lineCount = patterns.reduce(0) { acc, re in acc + re.numberOfMatches(in: s, range: full) }
-            if negation.firstMatch(in: s, range: full) != nil {
-                lineCount = max(0, lineCount - 1) // simple negation guard
-            }
-            total += lineCount
-        }
-        return total
-    }
+//    private func countGratitudeMentions(userUtterances: [String]?) -> Int {
+//        // If we were given explicit user lines, use them; else return 0 and the caller can fallback.
+//        guard let lines = userUtterances, !lines.isEmpty else { return 0 }
+//
+//        let patterns: [NSRegularExpression] = [
+//            try! NSRegularExpression(pattern: #"\bthanks?\b"#, options: [.caseInsensitive]),
+//            try! NSRegularExpression(pattern: #"\bthank\s+you\b"#, options: [.caseInsensitive]),
+//            try! NSRegularExpression(pattern: #"\bi(?:'m| am)?\s+grateful\b"#, options: [.caseInsensitive]),
+//            try! NSRegularExpression(pattern: #"\bi\s+appreciate(?:\s+(it|you|that))?\b"#, options: [.caseInsensitive]),
+//            try! NSRegularExpression(pattern: #"\bappreciation\b"#, options: [.caseInsensitive])
+//        ]
+//        let negation = try! NSRegularExpression(pattern: #"\b(not|nothing|don'?t|didn'?t)\b"#, options: [.caseInsensitive])
+//
+//        var total = 0
+//        for raw in lines {
+//            let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+//            guard !s.isEmpty else { continue }
+//            let full = NSRange(s.startIndex..<s.endIndex, in: s)
+//
+//            var lineCount = patterns.reduce(0) { acc, re in acc + re.numberOfMatches(in: s, range: full) }
+//            if negation.firstMatch(in: s, range: full) != nil {
+//                lineCount = max(0, lineCount - 1) // simple negation guard
+//            }
+//            total += lineCount
+//        }
+//        return total
+//    }
 
     /// Attempts to extract **user-only** utterances from the session doc.
     /// Preferred: an array field `userUtterances: [String]`.
@@ -337,6 +337,56 @@ final class FirestoreService {
     }
 
     
+    // MARK: - Insights cache (themes/focus)
+    
+    private func insightsCacheRef(_ uid: String) -> DocumentReference {
+        userRef(uid).collection("meta").document("insights_cache")
+    }
+
+    struct LanguageCache: Codable {
+        var themes: [String]
+        var focusTitle: String
+        var focusDescription: String
+        var digest: String
+        var updatedAt: Timestamp
+    }
+
+    // Keep your struct, or switch updatedAt to Date? if you prefer TTL math.
+    // struct LanguageCache { var themes:[String]; var focusTitle:String; var focusDescription:String; var digest:String; var updatedAt: Timestamp }
+    func readLanguageCache(uid: String, rangeDays: Int) async throws -> LanguageCache? {
+        let snap = try await insightsCacheRef(uid).getDocument()
+        guard let map = snap.data()?["r\(rangeDays)"] as? [String: Any] else { return nil }
+
+        let themes = map["themes"] as? [String] ?? []
+        let focusTitle = map["focusTitle"] as? String ?? ""
+        let focusDescription = map["focusDescription"] as? String ?? ""
+        let digest = map["digest"] as? String ?? ""
+        let updatedAt = (map["updatedAt"] as? Timestamp) ?? Timestamp(date: .distantPast)
+
+        // If required fields are missing, treat as no cache
+        guard !themes.isEmpty, !focusTitle.isEmpty, !focusDescription.isEmpty, !digest.isEmpty else { return nil }
+
+        return LanguageCache(
+            themes: themes,
+            focusTitle: focusTitle,
+            focusDescription: focusDescription,
+            digest: digest,
+            updatedAt: updatedAt
+        )
+    }
+
+    func writeLanguageCache(uid: String, rangeDays: Int, cache: LanguageCache) async throws {
+        // You can still use serverTimestamp inside a nested map.
+        let dict: [String: Any] = [
+            "themes": cache.themes,
+            "focusTitle": cache.focusTitle,
+            "focusDescription": cache.focusDescription,
+            "digest": cache.digest,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await insightsCacheRef(uid).setData(["r\(rangeDays)": dict], merge: true)
+    }
+
     
     
 }
