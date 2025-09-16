@@ -203,8 +203,7 @@ struct InsightsView: View {
                             Text("Tone Radar")
                                 .font(.headline.bold())
                         }
-//                        Text("Tone Radar")
-//                            .font(.headline.bold())
+
                         Text("Distribution across your selected period")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -244,7 +243,7 @@ struct InsightsView: View {
                         focusTitle: vm.focusTitle,
                         focusDescription: vm.focusDescription
                     )
-                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 20, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 22, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
@@ -479,59 +478,59 @@ private struct SimplePills: View {
 }
 
 
-private struct FlexiblePills: View {
-    let items: [String]
-    var hSpacing: CGFloat = 8
-    var vSpacing: CGFloat = 8
-    @State private var totalHeight: CGFloat = .zero
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
-                var currentX: CGFloat = 0
-                var currentY: CGFloat = 0
-
-                ForEach(items, id: \.self) { text in
-                    pill(for: text)
-                        .alignmentGuide(.leading) { d in
-                            if currentX + d.width > geo.size.width {
-                                // wrap to next line
-                                currentX = 0
-                                currentY -= (d.height + vSpacing)
-                            }
-                            let result = currentX
-                            currentX += (d.width + hSpacing)
-                            return result
-                        }
-                        .alignmentGuide(.top) { d in
-                            let result = currentY
-                            return result
-                        }
-                }
-            }
-            .background(heightReader($totalHeight))
-        }
-        .frame(height: totalHeight) // let measured height prevent overlap
-    }
-
-    private func pill(for text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.medium))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7) // a hair more vertical padding
-            .background(Capsule().fill(Color.orange.opacity(0.12)))
-            .overlay(Capsule().stroke(Color.orange.opacity(0.25), lineWidth: 1))
-    }
-
-    // Measures the ZStack so the container’s height expands correctly.
-    private func heightReader(_ binding: Binding<CGFloat>) -> some View {
-        GeometryReader { proxy in
-            Color.clear
-                .onAppear   { binding.wrappedValue = proxy.size.height }
-                .onChange(of: proxy.size.height) { _, new in binding.wrappedValue = new }
-        }
-    }
-}
+//private struct FlexiblePills: View {
+//    let items: [String]
+//    var hSpacing: CGFloat = 8
+//    var vSpacing: CGFloat = 8
+//    @State private var totalHeight: CGFloat = .zero
+//
+//    var body: some View {
+//        GeometryReader { geo in
+//            ZStack(alignment: .topLeading) {
+//                var currentX: CGFloat = 0
+//                var currentY: CGFloat = 0
+//
+//                ForEach(items, id: \.self) { text in
+//                    pill(for: text)
+//                        .alignmentGuide(.leading) { d in
+//                            if currentX + d.width > geo.size.width {
+//                                // wrap to next line
+//                                currentX = 0
+//                                currentY -= (d.height + vSpacing)
+//                            }
+//                            let result = currentX
+//                            currentX += (d.width + hSpacing)
+//                            return result
+//                        }
+//                        .alignmentGuide(.top) { d in
+//                            let result = currentY
+//                            return result
+//                        }
+//                }
+//            }
+//            .background(heightReader($totalHeight))
+//        }
+//        .frame(height: totalHeight) // let measured height prevent overlap
+//    }
+//
+//    private func pill(for text: String) -> some View {
+//        Text(text)
+//            .font(.caption.weight(.medium))
+//            .padding(.horizontal, 10)
+//            .padding(.vertical, 7) // a hair more vertical padding
+//            .background(Capsule().fill(Color.orange.opacity(0.12)))
+//            .overlay(Capsule().stroke(Color.orange.opacity(0.25), lineWidth: 1))
+//    }
+//
+//    // Measures the ZStack so the container’s height expands correctly.
+//    private func heightReader(_ binding: Binding<CGFloat>) -> some View {
+//        GeometryReader { proxy in
+//            Color.clear
+//                .onAppear   { binding.wrappedValue = proxy.size.height }
+//                .onChange(of: proxy.size.height) { _, new in binding.wrappedValue = new }
+//        }
+//    }
+//}
 
 
 
