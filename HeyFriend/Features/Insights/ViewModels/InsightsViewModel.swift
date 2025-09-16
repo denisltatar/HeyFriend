@@ -43,6 +43,11 @@ final class InsightsViewModel: ObservableObject {
     @Published var languageError: String? = nil
     private var lastLangFetch: Date?
 
+    // Personal Recommendations
+    @Published var recTitle: String? = nil
+    @Published var recBody: String? = nil
+    @Published var isLoadingRecommendation = true
+    
 
     // Load recent insight_summaries (already created in writeSummaryBundle)
     func loadHistory(limit: Int = 50) async {
@@ -266,6 +271,7 @@ extension InsightsViewModel {
         async let b: Void = loadRadar(rangeDays: rangeDays)
         async let c: Void = loadGratitude(rangeDays: rangeDays)
         async let d: Void = loadLanguagePatterns(rangeDays: rangeDays)
+        async let rec: Void = loadPersonalRecommendation(rangeDays: rangeDays)
         _ = await (a, b, c, d)
     }
     
@@ -494,6 +500,54 @@ extension InsightsViewModel {
             // fall back (keep old UI, don’t thrash)
         }
     }
+    
+    // MARK: - Load Personal Recommendations
+    func loadPersonalRecommendation(rangeDays: Int) async {
+        guard let uid = AuthService.shared.userId else { return }
+        isLoadingRecommendation = true
+        defer { isLoadingRecommendation = false }
+
+        // Inputs (keep tiny)
+        let bullets = await fetchBullets(rangeDays: rangeDays)
+        let signals = await fetchSignals(rangeDays: rangeDays)
+
+        // Optional: simple metrics you likely already have in the VM
+        let gratitudeTotal = self.gratitudeTotal
+        let toneTop = self.radarPoints.sorted(by: { $0.value > $1.value }).first?.label ?? ""
+
+        // Build digest so we only recompute when inputs change
+        let digest = sha256("r:\(rangeDays)|B:\(bullets.joined(separator: "|"))|S:\(signals.debugDescription)|G:\(gratitudeTotal)|T:\(toneTop)")
+
+        // Cache hit?
+        if let cached = try? await FirestoreService.shared.readRecommendationCache(uid: uid, rangeDays: rangeDays),
+           cached.digest == digest {
+            self.recTitle = cached.title
+            self.recBody = cached.body
+            return
+        }
+
+        // Call model
+        if let res = await ChatService.shared.generatePersonalizedRecommendation(
+            bullets: bullets,
+            signals: signals,
+            gratitudeTotal: gratitudeTotal,
+            topTone: toneTop,
+            lastTitle: self.recTitle ?? ""     // avoid repeats
+        ) {
+            self.recTitle = res.title
+            self.recBody = res.body
+
+            // Save cache
+            let cache = FirestoreService.RecommendationCache(
+                title: res.title,
+                body: res.body,
+                digest: digest,
+                updatedAt: Date()
+            )
+            try? await FirestoreService.shared.writeRecommendationCache(uid: uid, rangeDays: rangeDays, cache: cache)
+        }
+    }
+
 
     
 
