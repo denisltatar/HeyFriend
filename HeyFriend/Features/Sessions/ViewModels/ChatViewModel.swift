@@ -182,22 +182,22 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                     
                     // MARK: - Test vr. Prod Timmer
                     // 30 minutes, w/ 5 minute warning
-//                    let maxSeconds = 30 * 60        // TEST: use 30*60 for production
-//                    let warnThreshold = 300
-//                    self.timerService = SessionTimerService(
-//                        startedAt: startedLocal,
-//                        maxDuration: TimeInterval(maxSeconds),
-//                        warnAtSeconds: TimeInterval(warnThreshold)
-//                    )
-                    
-                    // 60 seconds, w/ 10 seconds warning
-                    let maxSeconds = 60
-                    let warnThreshold = 10
+                    let maxSeconds = 30 * 60        // TEST: use 30*60 for production
+                    let warnThreshold = 300
                     self.timerService = SessionTimerService(
                         startedAt: startedLocal,
-                        maxDuration: 60,
-                        warnAtSeconds: 10
+                        maxDuration: TimeInterval(maxSeconds),
+                        warnAtSeconds: TimeInterval(warnThreshold)
                     )
+                    
+                    // 60 seconds, w/ 10 seconds warning
+//                    let maxSeconds = 60
+//                    let warnThreshold = 10
+//                    self.timerService = SessionTimerService(
+//                        startedAt: startedLocal,
+//                        maxDuration: 60,
+//                        warnAtSeconds: 10
+//                    )
 
                     self.timerService?.publisher
                         .receive(on: DispatchQueue.main)
