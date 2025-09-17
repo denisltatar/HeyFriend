@@ -27,6 +27,8 @@ final class EntitlementSync {
     }
 
     private var updatesTask: Task<Void, Never>?
+    
+    nonisolated var isPlus: Bool { UserDefaults.standard.bool(forKey: "hf.hasPlus") }
 
     /// Call this once at app launch.
     func start() {

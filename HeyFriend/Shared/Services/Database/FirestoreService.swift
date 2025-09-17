@@ -423,7 +423,26 @@ final class FirestoreService {
         try await recCacheRef(uid).setData(["r\(rangeDays)": dict], merge: true)
     }
 
-    
+    // MARK: - Session limit
+    func markSessionWarning(uid: String, sid: String) async {
+        try? await sessionRef(uid, sid).setData([
+            "warningIssuedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+    }
+
+    func endSessionByTimeLimit(uid: String, sid: String) async {
+        try? await sessionRef(uid, sid).setData([
+            "status": "ended_time_limit",
+            "endedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+    }
+
+    func setMaxDuration(uid: String, sid: String, seconds: Int) async {
+        try? await sessionRef(uid, sid).setData([
+            "maxDurationSeconds": seconds,
+            "status": "active"
+        ], merge: true)
+    }
     
 }
 
