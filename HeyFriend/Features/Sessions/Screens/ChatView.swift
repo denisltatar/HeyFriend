@@ -16,7 +16,7 @@ struct ChatView: View {
     @State private var quantizedSpeed: Double = 48
     
     // Summaries
-    @State private var showingSummary = false
+//    @State private var showingSummary = false
     
     // Suggested prompt entry if user decides to use one...
     @AppStorage("HF_initialPrompt") private var initialPrompt: String = ""
@@ -112,6 +112,14 @@ struct ChatView: View {
             
 
             VStack(spacing: 12) {
+                // Session limit banner
+                VStack(spacing: 12) {
+                    if viewModel.showTMinusFiveBanner {
+                        CountdownBanner(secondsRemaining: viewModel.finalCountdownSeconds)
+                    }
+                }
+                    // ... your existing content (Orb, mic, etc.)
+
                 // Top bar
 //                HStack {
 //                    Spacer()
@@ -196,9 +204,8 @@ struct ChatView: View {
                         // X button “floats” to the right of mic
                         Button {
                             if viewModel.isRecording { viewModel.toggleRecording() }
-                            let sessionId = UUID().uuidString
-                            viewModel.endSessionAndSummarize()
-                            showingSummary = true
+                            viewModel.endSessionAndSummarize()     // stops audio + kicks off summary
+                            viewModel.showSummarySheet = true      // open the summary modal
                         } label: {
                             ZStack {
                                 Circle()
@@ -234,6 +241,21 @@ struct ChatView: View {
             }
             .padding(16)
         }
+        .sheet(isPresented: $viewModel.showSummarySheet) {
+            if let s = viewModel.currentSummary {
+                SummaryDetailView(summary: s)
+            } else if viewModel.isGeneratingSummary {
+                ProgressView("Creating your summary…").padding()
+            } else if let err = viewModel.summaryError {
+                VStack(spacing: 12) {
+                    Text("Couldn’t create summary").font(.headline)
+                    Text(err).font(.footnote).foregroundStyle(.secondary)
+                    Button("Close") { viewModel.showSummarySheet = false }
+                }
+                .padding()
+            }
+        }
+
         .sheet(isPresented: $showingSettings) {
             NavigationView {
                 Form {
@@ -259,26 +281,28 @@ struct ChatView: View {
                 showSeededPreparing = false
                 seededOverlayConsumed = true
             }
-        }.sheet(isPresented: $showingSummary) {
-            if let s = viewModel.currentSummary {
-                SummaryDetailView(summary: s)
-            } else if viewModel.isGeneratingSummary {
-                ProgressView("Creating your summary…").padding()
-            } else if let err = viewModel.summaryError {
-                VStack(spacing: 12) {
-                    Text("Couldn’t create summary").font(.headline)
-                    Text(err).font(.footnote).foregroundStyle(.secondary)
-                    Button("Close") { showingSummary = false }
-                }
-                .padding()
-            } else {
-                VStack(spacing: 12) {
-                    Text("Nothing to summarize yet").font(.headline)
-                    Button("Close") { showingSummary = false }
-                }
-                .padding()
-            }
         }
+//        .sheet(isPresented: $showingSummary) {
+//            if let s = viewModel.currentSummary {
+//                SummaryDetailView(summary: s)
+//            } else if viewModel.isGeneratingSummary {
+//                ProgressView("Creating your summary…").padding()
+//            } else if let err = viewModel.summaryError {
+//                VStack(spacing: 12) {
+//                    Text("Couldn’t create summary").font(.headline)
+//                    Text(err).font(.footnote).foregroundStyle(.secondary)
+//                    Button("Close") { viewModel.showSummarySheet = false }
+//                }
+//                .padding()
+//            }
+//            else {
+//                VStack(spacing: 12) {
+//                    Text("Nothing to summarize yet").font(.headline)
+//                    Button("Close") { showingSummary = false }
+//                }
+//                .padding()
+//            }
+//        }
     }
 
     

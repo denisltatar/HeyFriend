@@ -8,6 +8,8 @@
 import Foundation
 import AVFoundation
 import Speech
+import Combine
+
 
 class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     @Published var transcribedText: String = ""
@@ -62,6 +64,22 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     // Firestore session + transcript we persist
     @Published var currentSessionId: String?
     private var transcriptLines: [String] = []
+    
+    // ---- Session limit UI/state ----
+    @Published var showTMinusFiveBanner = false
+    @Published var showFinalCountdown = false
+    @Published var finalCountdownSeconds = 0
+
+    @Published var showSummarySheet = false          // summary modal you’ll show
+    @Published var sessionEndedByTimeLimit = false   // hard stop guard
+
+    private var hasIssuedWarning = false
+    private var timerService: SessionTimerService?
+    private var cancellables = Set<AnyCancellable>()
+    private var sessionStartedAtLocal: Date?
+    
+
+
     
     override init() {
         super.init()
@@ -133,30 +151,126 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         // 🔽 NEW: open a Firestore session + reset transcript
         Task {
             do {
-                // No need for anonymous sign-in anymore if Google/Apple is required.
-//                try await AuthService.shared.signInAnonymouslyIfNeeded()
-                
-                // Check if user is signed in by checking userID if it exists
                 guard let uid = AuthService.shared.userId else {
                     print("No signed-in user; cannot start session.")
-                    await MainActor.run { self.isBootingSession = false }   // end boot even if we can't start Firestore
+                    await MainActor.run { self.isBootingSession = false }
                     return
                 }
-                
-                // Start firebase session
+
+                // Create Firestore session and capture sid FIRST
                 let sid = try await FirestoreService.shared.startSession(uid: uid)
-                
+
+                // Publish id to the UI immediately
                 await MainActor.run {
                     self.currentSessionId = sid
                     self.transcriptLines.removeAll()
-                    self.isBootingSession = false
                 }
+                
+                // Reset time-limit UI/flags at the start of each session
+                hasIssuedWarning = false
+                showTMinusFiveBanner = false
+                showFinalCountdown = false
+                finalCountdownSeconds = 0
+                sessionEndedByTimeLimit = false
+
+
+                // Seed start time and attach a short test timer (60s). Flip to 30*60 for prod.
+                let startedLocal = Date()
+                self.sessionStartedAtLocal = startedLocal
+
+                if EntitlementSync.shared.isPlus {
+                    
+                    // MARK: - Test vr. Prod Timmer
+                    // 30 minutes, w/ 5 minute warning
+//                    let maxSeconds = 30 * 60        // TEST: use 30*60 for production
+//                    let warnThreshold = 300
+//                    self.timerService = SessionTimerService(
+//                        startedAt: startedLocal,
+//                        maxDuration: TimeInterval(maxSeconds),
+//                        warnAtSeconds: TimeInterval(warnThreshold)
+//                    )
+                    
+                    // 60 seconds, w/ 10 seconds warning
+                    let maxSeconds = 60
+                    let warnThreshold = 10
+                    self.timerService = SessionTimerService(
+                        startedAt: startedLocal,
+                        maxDuration: 60,
+                        warnAtSeconds: 10
+                    )
+
+                    self.timerService?.publisher
+                        .receive(on: DispatchQueue.main)
+                        .sink { [weak self] state in
+                            guard let self else { return }
+
+                            // ⏰ One-time warning + auto-dismiss
+                            // TEST: warn at 10s remaining; PROD: change 10 -> 300 (5 minutes)
+                            let warnThreshold = 10  // ← change to 300 in production
+                            if !self.hasIssuedWarning, Int(state.remaining) <= warnThreshold {
+                                self.hasIssuedWarning = true
+                                self.showTMinusFiveBanner = true
+
+                                // (Optional) persist a "warningIssuedAt" in Firestore if you want
+                                if let uid = AuthService.shared.userId, let sid = self.currentSessionId {
+                                    Task { await FirestoreService.shared.markSessionWarning(uid: uid, sid: sid) }
+                                }
+                            }
+
+                            // Keep banner visible and keep updating the countdown until 0
+                            let rem = Int(ceil(state.remaining))
+                            self.finalCountdownSeconds = max(0, rem) // always update
+                            self.showFinalCountdown = rem <= 60      // switch to numeric countdown in last minute
+
+                            // Hard stop
+                            if state.isOverLimit {
+                                self.endDueToTimeLimit()
+                            }
+                        }
+                        .store(in: &self.cancellables)
+
+                    // Keep Firestore in sync with the cap (use 1800 for prod)
+                    if let uid = AuthService.shared.userId, let sid = self.currentSessionId {
+                        Task { await FirestoreService.shared.setMaxDuration(uid: uid, sid: sid, seconds: maxSeconds) }
+                    }
+                }
+
+                await MainActor.run { self.isBootingSession = false }
             } catch {
                 print("Failed to start Firestore session:", error)
                 await MainActor.run { self.isBootingSession = false }
             }
         }
     }
+    
+    // Use of session limit
+    private func endDueToTimeLimit() {
+        // 1) UI resets FIRST so nothing lingers
+        showTMinusFiveBanner = false
+        showFinalCountdown = false
+        finalCountdownSeconds = 0
+
+        // 2) Hard-stop guards
+        sessionEndedByTimeLimit = true
+        isRecording = false
+
+        // 3) Stop audio/streams/timer
+        stopRecognition(.userStop)
+        TextToSpeechService.shared.stop()
+        timerService?.stop()
+        timerService = nil
+
+        // 4) Persist end state
+        if let uid = AuthService.shared.userId, let sid = currentSessionId {
+            Task { await FirestoreService.shared.endSessionByTimeLimit(uid: uid, sid: sid) }
+        }
+
+        // 5) Auto-start summary + show sheet
+        endSessionAndSummarize()
+        showSummarySheet = true
+    }
+
+
 
     func stopSession() {
         isRecording = false
@@ -287,6 +401,9 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
 
         ChatService.shared.sendMessage(userTurn) { reply in
             DispatchQueue.main.async {
+                // ⛔️ If session ended by time limit, ignore late replies completely
+                guard !self.sessionEndedByTimeLimit else { return }
+                
                 let bot = (reply ?? "Sorry, I didn’t catch that. Can you try again?").trimmingCharacters(in: .whitespacesAndNewlines)
                 self.aiResponse = bot
                 // 🔽 NEW: record assistant turn, persist transcript
@@ -441,6 +558,10 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         isWaitingForReply = false   // ensuring our reply message to user doesn't show more than once!
         print("[barge] onTTSFinish (bargeRequested=\(bargeRequested))")
         removeBargeInTap()
+        
+        // ⛔️ If we hit the time limit, do not resume listening
+        guard !sessionEndedByTimeLimit else { return }
+        
         // Resume listening for the next turn
         guard isRecording else { return }
         
