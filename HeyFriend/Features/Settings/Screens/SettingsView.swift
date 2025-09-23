@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import StoreKit
 import LocalAuthentication
+import FirebaseAuth
 
 // MARK: - App Config / Keys
 private enum AppConfig {
@@ -21,6 +22,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     
     // Trial/Plus state
+    @Environment(\.scenePhase) private var scenePhase   // ← provides scenePhase
     @StateObject private var entitlements = EntitlementsViewModel()
     @AppStorage("hf.hasPlus") private var hasPlus = false   // ← added as a quick fallback
 
@@ -217,6 +219,18 @@ struct SettingsView: View {
 //            }
         }
         .task { entitlements.start() }          // ← start listening
+        // For payment testing
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, let u = Auth.auth().currentUser, !u.isAnonymous {
+                Task {
+                    await EntitlementSync.shared.debugDumpEntitlements(label: "Foreground")
+//                    await EntitlementSync.shared.restore()         // force receipt
+                    await EntitlementSync.shared.refresh()
+                    await EntitlementSync.shared.debugDumpEntitlements(label: "After Restore+Refresh")
+                }
+                
+            }
+        }
         .onDisappear { entitlements.stop() }    // ← optional: clean up
     }
 }

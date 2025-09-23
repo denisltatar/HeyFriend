@@ -67,7 +67,10 @@ final class EntitlementSync {
     /// Re-check current entitlements and (safely) mirror to local flag + Firestore.
     func refresh() async {
         // optional UX tweak
-        guard Auth.auth().currentUser != nil else { return }
+        guard Auth.auth().currentUser != nil else {
+            print("refresh(): skipped (no Firebase user)")
+            return
+        }
         
         // 0) If we truly cannot check yet (e.g., no receipt state),
         // we still compute from SK2 API below; no Firestore writes until UID exists.
@@ -117,6 +120,12 @@ final class EntitlementSync {
                 originalTransactionId: String(original),
                 expiresAt: tx.expirationDate
             )
+            
+            if let tx = activePlus {
+                print("✓ PLUS ACTIVE via \(tx.productID) exp=\(String(describing: tx.expirationDate))")
+            } else {
+                print("✗ No active Plus found in refresh()")
+            }
         } else {
             // To avoid flapping: give the system a short grace window after login/foreground
             // before declaring "free".
@@ -177,5 +186,49 @@ final class EntitlementSync {
     // Optional: call on logout to clear fast UI state only (not server)
     func clearLocalFlagOnLogout() {
         hasPlusFlag = false
+    }
+}
+
+extension EntitlementSync {
+    func debugDumpEntitlements(label: String = "DEBUG") async {
+        print("──── \(label): BEGIN ENTITLEMENT DUMP ────")
+
+        // Current (active) entitlements
+        var foundAny = false
+        for await result in Transaction.currentEntitlements {
+            switch result {
+            case .verified(let tx):
+                foundAny = true
+                print("• CURRENT VERIFIED")
+                print("  productID: \(tx.productID)")
+                print("  type: \(tx.productType.rawValue)")
+                print("  purchaseDate: \(tx.purchaseDate)")
+                print("  expirationDate: \(String(describing: tx.expirationDate))")
+                print("  revocationDate: \(String(describing: tx.revocationDate))")
+                print("  isUpgraded: \(tx.isUpgraded)")
+            case .unverified(let tx, let err):
+                foundAny = true
+                print("• CURRENT UNVERIFIED \(tx.productID) error: \(err)")
+            }
+        }
+        if !foundAny { print("• No currentEntitlements found") }
+
+        // Latest per product ID (defensive)
+        for id in plusIDs {
+            let latest = await Transaction.latest(for: id)
+            switch latest {
+            case .verified(let tx):
+                print("• LATEST VERIFIED for \(id)")
+                print("  purchaseDate: \(tx.purchaseDate)")
+                print("  expirationDate: \(String(describing: tx.expirationDate))")
+                print("  revocationDate: \(String(describing: tx.revocationDate))")
+            case .unverified(let tx, let err):
+                print("• LATEST UNVERIFIED for \(id) error: \(err) (tx: \(tx))")
+            case .none:
+                print("• LATEST none for \(id)")
+            }
+        }
+
+        print("──── \(label): END ENTITLEMENT DUMP ────")
     }
 }

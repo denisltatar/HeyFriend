@@ -193,6 +193,11 @@ struct PaywallView: View {
 
     private func loadProducts() async {
         do {
+            print("IDs:", [IAP.monthlyID, IAP.yearlyID])
+            let fetched = try await Product.products(for: [IAP.monthlyID, IAP.yearlyID])
+            print("Fetched count:", fetched.count)
+            for p in fetched { print("→", p.id, p.displayName, p.displayPrice) }
+            
             var ids: Set<String> = [IAP.monthlyID]
             if !IAP.yearlyID.isEmpty { ids.insert(IAP.yearlyID) }
             products = try await Product.products(for: ids)
