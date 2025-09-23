@@ -9,6 +9,12 @@ import Foundation
 import SwiftUI
 import FirebaseAuth
 
+private enum Brand {
+    static let amber  = Color(red: 1.00, green: 0.72, blue: 0.34)
+    static let orange = Color(red: 1.00, green: 0.45, blue: 0.00)
+    static let customYellow = Color(red: 254/255, green: 205/255, blue: 95/255)
+}
+
 struct SessionsHomeView: View {
     @State private var goToChat = false
     @State private var isStarting = false
@@ -108,8 +114,11 @@ struct SessionsHomeView: View {
                     .background(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color(red: 1.00, green: 0.72, blue: 0.34), // amber
-                                Color(red: 1.00, green: 0.45, blue: 0.00)  // orange
+//                                Color(red: 1.00, green: 0.45, blue: 0.00),  // orange
+//                                Color(red: 1.00, green: 0.72, blue: 0.34), // amber
+//                                Color(red: 1.00, green: 0.45, blue: 0.00)  // orange
+                                Brand.amber,
+                                Brand.orange
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -149,11 +158,11 @@ struct SessionsHomeView: View {
                                     .padding(.horizontal, 14)
                                     .background(
                                         Capsule(style: .continuous)
-                                            .fill(Color.orange.opacity(0.12))
+                                            .fill(Brand.orange.opacity(0.12))
                                     )
                                     .overlay(
                                         Capsule()
-                                            .stroke(Color.orange.opacity(0.35), lineWidth: 1)
+                                            .stroke(Brand.orange.opacity(0.35), lineWidth: 1)
                                     )
                                 }
                                 .buttonStyle(.plain)
@@ -189,7 +198,7 @@ struct SessionsHomeView: View {
                                                 .font(.caption2)
                                                 .padding(.vertical, 4)
                                                 .padding(.horizontal, 8)
-                                                .background(Capsule().fill(Color.orange.opacity(0.15)))
+                                                .background(Capsule().fill(Brand.orange.opacity(0.15)))
                                         }
                                         .padding(12)
                                         .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
@@ -199,7 +208,7 @@ struct SessionsHomeView: View {
                                         )
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                .stroke(Color.orange.opacity(0.20), lineWidth: 1)
+                                                .stroke(Brand.orange.opacity(0.20), lineWidth: 1)
                                         )
                                         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                                     }

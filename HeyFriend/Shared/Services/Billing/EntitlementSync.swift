@@ -27,40 +27,88 @@ final class EntitlementSync {
     }
 
     private var updatesTask: Task<Void, Never>?
+    private var authHandle: AuthStateDidChangeListenerHandle?
     
     nonisolated var isPlus: Bool { UserDefaults.standard.bool(forKey: "hf.hasPlus") }
 
     /// Call this once at app launch.
     func start() {
-        // 1) Do an initial refresh
+        // Listen to Firebase auth changes (login/logout/switch).
+        if authHandle == nil {
+            authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, _ in
+                // When auth changes, re-check entitlements after a tiny delay
+                // to let Apple receipt/auth settle.
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000) // 0.35s debounce
+                    await self?.refresh()
+                }
+            }
+        }
+
+        // Initial refresh
         Task { await refresh() }
-        // 2) Begin listening for changes from the App Store
+
+        // Listen for StoreKit updates
         if updatesTask == nil {
             updatesTask = Task { await listenForTransactionUpdates() }
         }
     }
+    
+    /// Manually trigger Apple sync (for your "Restore Purchases" button).
+    func restore() async {
+        do {
+            try await AppStore.sync()
+        } catch {
+            print("Restore failed: \(error)")
+        }
+        await refresh()
+    }
 
-    /// Re-check current entitlements and mirror to local flag + Firestore.
+    /// Re-check current entitlements and (safely) mirror to local flag + Firestore.
     func refresh() async {
-        // 1) Find an active Plus transaction (if any)
+        // optional UX tweak
+        guard Auth.auth().currentUser != nil else { return }
+        
+        // 0) If we truly cannot check yet (e.g., no receipt state),
+        // we still compute from SK2 API below; no Firestore writes until UID exists.
+
+        // 1) Scan current entitlements for active Plus
         var activePlus: Transaction?
         for await result in Transaction.currentEntitlements {
-            if case .verified(let tx) = result,
-               tx.productType == .autoRenewable,
-               plusIDs.contains(tx.productID),
-               tx.revocationDate == nil,
-               (tx.expirationDate ?? .distantFuture) > Date() {
-                activePlus = tx
-                break
+            guard case .verified(let tx) = result else { continue }
+            guard plusIDs.contains(tx.productID),
+                  tx.productType == .autoRenewable,
+                  tx.revocationDate == nil,
+                  (tx.expirationDate ?? .distantFuture) > Date()
+            else { continue }
+            activePlus = tx
+            break
+        }
+
+        // 2) Defensive check (latest) — covers non-consumable lifetime or edge cases
+        if activePlus == nil {
+            for id in plusIDs {
+                if let latest = await Transaction.latest(for: id),
+                   case .verified(let tx) = latest,
+                   tx.revocationDate == nil,
+                   !tx.isUpgraded,
+                   (tx.expirationDate ?? .distantFuture) > Date() {
+                    activePlus = tx
+                    break
+                }
             }
         }
-        
-        // 2) Flip local flag
+
+        // 3) Update local UI flag immediately (fast UI)
         hasPlusFlag = (activePlus != nil)
-        
-        // 3) Write to Firestore once (with metadata if active)
-        guard let uid = (AuthService.shared.userId ?? Auth.auth().currentUser?.uid) else { return }
-        
+
+        // 4) Mirror to Firestore ONLY if we have a uid
+        guard let uid = (AuthService.shared.userId ?? Auth.auth().currentUser?.uid) else {
+            // No UID yet — don't overwrite server state to free.
+            return
+        }
+
+        // 5) Write to Firestore
         if let tx = activePlus {
             let original = tx.originalID ?? tx.id
             try? await FirestoreService.shared.setPlus(
@@ -70,7 +118,23 @@ final class EntitlementSync {
                 expiresAt: tx.expirationDate
             )
         } else {
-            try? await FirestoreService.shared.setFree(uid: uid)
+            // To avoid flapping: give the system a short grace window after login/foreground
+            // before declaring "free".
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s
+            // Re-check quickly once more to be sure.
+            var stillNoPlus = true
+            for await result in Transaction.currentEntitlements {
+                if case .verified(let tx) = result,
+                   plusIDs.contains(tx.productID),
+                   tx.revocationDate == nil,
+                   (tx.expirationDate ?? .distantFuture) > Date() {
+                    stillNoPlus = false
+                    break
+                }
+            }
+            if stillNoPlus {
+                try? await FirestoreService.shared.setFree(uid: uid)
+            }
         }
     }
 
@@ -108,5 +172,10 @@ final class EntitlementSync {
         } else {
             try? await FirestoreService.shared.setFree(uid: uid)
         }
+    }
+    
+    // Optional: call on logout to clear fast UI state only (not server)
+    func clearLocalFlagOnLogout() {
+        hasPlusFlag = false
     }
 }

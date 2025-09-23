@@ -88,6 +88,14 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.primary)
+                        
+                        Button {
+                            showPaywall = true   // reuse your existing sheet
+                        } label: {
+                            Label("View your plan", systemImage: "person.badge.shield.checkmark")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.primary)
                     } else {
                         Button {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -99,13 +107,6 @@ struct SettingsView: View {
                         .foregroundStyle(.primary)
                     }
                     
-                    Button {
-                        showPaywall = true   // reuse your existing sheet
-                    } label: {
-                        Label("View your plan", systemImage: "person.badge.shield.checkmark")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.primary)
 
 //                    Button {
 //                        // TODO: Present paywall / Plus screen

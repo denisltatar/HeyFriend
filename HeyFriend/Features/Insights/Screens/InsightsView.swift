@@ -48,6 +48,12 @@ struct TonePoint: Identifiable, Equatable {
     }
 }
 
+private enum Brand {
+    static let amber  = Color(red: 1.00, green: 0.72, blue: 0.34)
+    static let orange = Color(red: 1.00, green: 0.45, blue: 0.00)
+    static let customYellow = Color(red: 254/255, green: 205/255, blue: 95/255)
+}
+
 
 private struct InsightsHeader: View {
     @Binding var selected: InsightsRange
@@ -76,13 +82,15 @@ private struct InsightsHeader: View {
                             .background(
                                 Capsule()
                                     .fill(isSelected
-                                          ? Color.orange // 🔥 brand orange when active
+//                                          ? Color.orange // 🔥 brand orange when active
+                                          ? Brand.orange
                                           : Color(.secondarySystemBackground))
                             )
                             .overlay(
                                 Capsule()
                                     .stroke(isSelected
-                                            ? Color.orange.opacity(0.8) // 🔥 border matches
+//                                            ? Color.orange.opacity(0.8) // 🔥 border matches
+                                            ? Brand.orange.opacity(0.8)
                                             : Color.primary.opacity(0.06),
                                             lineWidth: 1)
                             )
@@ -178,7 +186,7 @@ struct InsightsView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "theatermasks")
                                 .font(.title3.weight(.semibold))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Brand.orange)
                             Text("Tone Radar")
                                 .font(.headline.bold())
                         }
@@ -461,7 +469,11 @@ private struct LanguagePatternsCard: View {
             if isLoading {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(.ultraThinMaterial)
-                    .overlay(ProgressView().controlSize(.small))
+                    .overlay(
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.gray)
+                    )
                     .allowsHitTesting(false)
             }
         }
@@ -835,9 +847,9 @@ struct RadarChart: View {
     let showDots: Bool = true
     let labelPadding: CGFloat = 18
     let lineWidth: CGFloat = 2
-    var strokeColor: Color = .orange
+    var strokeColor: Color = Brand.orange
     var fillGradient: LinearGradient = LinearGradient(
-        colors: [Color.orange.opacity(0.28), Color.orange.opacity(0.06)],
+        colors: [Brand.orange.opacity(0.28), Brand.orange.opacity(0.06)],
         startPoint: .top, endPoint: .bottom
     )
 
@@ -1000,7 +1012,7 @@ private struct RecommendationCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Image(systemName: "lightbulb.fill")
-                        .font(.title2.weight(.semibold))
+                        .font(.title3.weight(.semibold))
 //                        .foregroundStyle(Color.yellow)
                         .foregroundStyle(Color.green)
                     Text("Personalized Recommendation")
@@ -1033,7 +1045,11 @@ private struct RecommendationCard: View {
             if isLoading {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(.ultraThinMaterial)
-                    .overlay(ProgressView().controlSize(.small))
+                    .overlay(
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.gray)
+                    )
                     .allowsHitTesting(false)
             }
         }

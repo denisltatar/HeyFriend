@@ -61,6 +61,7 @@ struct HeyFriendApp: App {
 
     // ⬇️ Added this to refresh when app becomes active
     @Environment(\.scenePhase) private var scenePhase
+    @State private var authHandle: AuthStateDidChangeListenerHandle?
     
     var body: some Scene {
         let appearance = AppAppearance(rawValue: appearanceRaw) ?? AppAppearance.system
@@ -68,7 +69,6 @@ struct HeyFriendApp: App {
         WindowGroup {
             Group {
                 if let user = Auth.auth().currentUser, !user.isAnonymous {
-//                if let user = Auth.auth().currentUser {
                     RootTabView().preferredColorScheme(appearance.colorScheme)
                 } else {
                     WelcomeView().preferredColorScheme(appearance.colorScheme)
@@ -84,16 +84,23 @@ struct HeyFriendApp: App {
 //                await EntitlementSync.shared.refresh()
 //            }
             
-            // ⬇️ ADDED: initial entitlement sync + start background listener
             .task {
-                print("👤 UID:", Auth.auth().currentUser?.uid ?? "nil")
-                EntitlementSync.shared.start()
+                authHandle = Auth.auth().addStateDidChangeListener { _, user in
+                    if let user, !user.isAnonymous {
+                        print("👤 Signed in as:", user.uid)
+                        EntitlementSync.shared.start()
+                        Task { await EntitlementSync.shared.refresh() }
+                    } else {
+                        print("👤 Signed out (or anonymous) — clearing local Plus flag")
+                        EntitlementSync.shared.clearLocalFlagOnLogout()
+                    }
+                }
             }
 
 
            // ⬇️ ADDED: refresh when app returns to foreground
            .onChange(of: scenePhase) { phase in
-               if phase == .active {
+               if phase == .active, let u = Auth.auth().currentUser, !u.isAnonymous {
                    Task { await EntitlementSync.shared.refresh() }
                }
            }
