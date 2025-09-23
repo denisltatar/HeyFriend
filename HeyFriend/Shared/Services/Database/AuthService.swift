@@ -22,6 +22,14 @@ final class AuthService: ObservableObject {
         // Then keep it in sync
         Auth.auth().addStateDidChangeListener { _, user in
             self.userId = user?.uid
+
+            // ✅ OPTIONAL: when a real user is present, re-check entitlements
+            if let user, !user.isAnonymous {
+                Task {
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3s debounce
+                    await EntitlementSync.shared.refresh()
+                }
+            }
         }
     }
 
@@ -42,6 +50,9 @@ final class AuthService: ObservableObject {
                 accessToken: restored.accessToken.tokenString
             )
             _ = try await Auth.auth().signIn(with: credential)
+            
+            // ✅: refresh entitlements after sign-in
+            await EntitlementSync.shared.refresh()
             return
         }
 
@@ -56,6 +67,9 @@ final class AuthService: ObservableObject {
             accessToken: result.user.accessToken.tokenString
         )
         _ = try await Auth.auth().signIn(with: credential)
+        
+        // ✅: refresh entitlements after sign-in
+        await EntitlementSync.shared.refresh()
     }
     
     // Keep the last nonce so we can verify the response
@@ -97,6 +111,9 @@ final class AuthService: ObservableObject {
             )
             _ = try await Auth.auth().signIn(with: firebaseCredential)
             // auth state change will route you to RootTabView
+            
+            // ✅: refresh entitlements after sign-in
+            await EntitlementSync.shared.refresh()
         }
     }
 
@@ -133,6 +150,9 @@ final class AuthService: ObservableObject {
     @MainActor
     func signOut() {
         do {
+            // ✅: clear local Plus flag before/after sign-out
+            EntitlementSync.shared.clearLocalFlagOnLogout()
+            
             try Auth.auth().signOut()
             GIDSignIn.sharedInstance.signOut()
             self.userId = nil

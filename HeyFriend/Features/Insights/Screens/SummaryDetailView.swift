@@ -40,7 +40,9 @@ struct SummaryDetailView: View {
                     if let rec = summary.recommendation, !rec.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 8) {
-                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                Image(systemName: "lightbulb.fill")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(Color.green)
                                 Text("Personalized Recommendation").bold()
                                 Spacer()
                             }
@@ -79,6 +81,7 @@ struct SummaryDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "heart")
+                    .foregroundStyle(Color(red: 1.0, green: 0.12, blue: 0.44)) // #FF1F6F
                 Text("Primary Tone").font(.headline)
             }
             VStack(alignment: .leading, spacing: 6) {
@@ -88,9 +91,14 @@ struct SummaryDetailView: View {
                 }
                 if let supports = summary.supportingTones, !supports.isEmpty {
                     let list = supports.joined(separator: ", ")
-                    Text("Supporting Tones: \(list)")
+//                    Text("Supporting Tones: \(list)")
+//                        .font(.subheadline)
+//                        .foregroundStyle(Color(red: 1.0, green: 0.12, blue: 0.44)) // #FF1F6F
+                    Text("Supporting Tones: ")
                         .font(.subheadline)
-                        .foregroundStyle(.purple)
+                    + Text(list)
+                        .font(.subheadline) // keep font consistent
+//                        .foregroundStyle(Color(red: 1.0, green: 0.12, blue: 0.44)) // #FF1F6F
                 }
             }
             .padding(16)
@@ -101,7 +109,7 @@ struct SummaryDetailView: View {
     private var languageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: "brain.head.profile")
+                Image(systemName: "brain.head.profile").foregroundStyle(.purple)
                 Text("Language Patterns").font(.headline)
             }
             if let lang = summary.language {

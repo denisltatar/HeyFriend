@@ -9,39 +9,52 @@ import Foundation
 import SwiftUI
 
 struct RootTabView: View {
+    private let brandOrange = Color(red: 1.0, green: 0.478, blue: 0.0) // #FF7A00
+
+    init() {
+        let tabBar = UITabBar.appearance()
+        tabBar.itemPositioning = .centered
+        tabBar.itemSpacing = 12
+        tabBar.itemWidth = 80
+    }
+
     var body: some View {
-        ZStack {
-            TabView {
-                // Sessions
-                NavigationStack {
-                    //                ChatView().navigationTitle("Sessions")
-                    //                ChatView()
-                    SessionsHomeView()
-                }
+        TabView {
+            // Sessions
+            NavigationStack { SessionsHomeView() }
                 .tabItem {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .accessibilityLabel("Sessions")
+                    Image(systemName: "bolt.house")
+                        .font(.system(size: 18)) // shrink icon only
+                    Text("Sessions")
                 }
-                
-                // Insights
-                NavigationStack {
-                    InsightsView().navigationTitle("Insights")
-                }
+
+            // Insights
+            NavigationStack { InsightsView().navigationTitle("Insights") }
                 .tabItem {
                     Image(systemName: "chart.line.uptrend.xyaxis")
-                        .accessibilityLabel("Insights")
+                        .font(.system(size: 18))
+                    Text("Insights")
                 }
-                
-                // Settings
-                NavigationStack {
-                    SettingsView().navigationTitle("Settings")
-                }
+
+            // Settings
+            NavigationStack { SettingsView().navigationTitle("Settings") }
                 .tabItem {
                     Image(systemName: "gearshape.fill")
-                        .accessibilityLabel("Settings")
+                        .font(.system(size: 18))
+                    Text("Settings")
                 }
-            }
-        }// do async auth + hello write once when the view appears
+        }
+        // Changed across entire app!
+        .tint(brandOrange)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+    }
+}
+
+
+
+
+// do async auth + hello write once when the view appears
 //        .task {
 //            #if DEBUG
 //            do {
@@ -54,5 +67,3 @@ struct RootTabView: View {
 //            }
 //            #endif
 //        }
-    }
-}
