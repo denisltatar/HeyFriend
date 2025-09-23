@@ -19,11 +19,15 @@ struct WelcomeView: View {
             // Soft, warm background to match your orange theme
             LinearGradient(
                 colors: [
-                    Color.orange.opacity(0.25),
-                    Color(red: 1.0, green: 0.75, blue: 0.45).opacity(0.25)
+//                    Color.orange.opacity(0.25),
+//                    Color(red: 1.0, green: 0.75, blue: 0.45).opacity(0.25)
+                    Color(red: 0.996, green: 0.804, blue: 0.373),
+                    Color(red: 0.996, green: 0.486, blue: 0.0)
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                startPoint: .bottomLeading,
+                endPoint: .topTrailing
+//                startPoint: .topLeading,
+//                endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
