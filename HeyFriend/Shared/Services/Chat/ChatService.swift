@@ -142,8 +142,7 @@ extension ChatService {
             - LANGUAGE.emotional_indicators: short phrase (e.g., “cautious optimism”, “frustrated but determined”) only if supported.
             - If LANGUAGE has no clear signals, omit the whole "language" object.
             - RECOMMENDATION: ≤300 tokens, concrete and doable (CBT/DBT‑aligned micro‑steps), grounded in what was discussed.
-            - GRATITUDE_MENTIONS: - Count gratitude_mentions as the number of distinct USER utterances that express gratitude
-                (e.g., “thanks/thank you”, “I appreciate…”, “I’m grateful…”). Ignore assistant/bot lines and negations (e.g., “not grateful”). If none are present, return 0.
+            - GRATITUDE_MENTIONS: - Count every separate sentence or phrase where the USER expresses gratitude or appreciation. Examples that count: "I'm grateful for...", "Thanks...", "I appreciate...", even if about different things. Count **each** occurrence, not just unique topics.
             - If there are signs of imminent self‑harm/harm-to-others, instead return:
                 {
                   "summary": ["We can’t summarize right now."],
@@ -197,6 +196,11 @@ extension ChatService {
                   let raw = try? JSONDecoder().decode(RawSummary.self, from: rawData)
             else { completion(nil); return }
 
+            // --- Fallback if model undercounts gratitude mentions ---
+            let modelCount = raw.gratitude_mentions ?? 0
+            let heuristicCount = self.fallbackGratitudeCount(in: transcript)
+            let finalCount = max(modelCount, heuristicCount)
+            
             let mapped = SessionSummary(
                 id: sessionId,
                 summary: Array(raw.summary.prefix(3)),
@@ -212,12 +216,74 @@ extension ChatService {
                     )
                 },
                 recommendation: raw.recommendation,
-                gratitudeMentions: raw.gratitude_mentions ?? 0
+                gratitudeMentions: finalCount
             )
-            print("🔎 ChatService: model returned gratitude_mentions=\(mapped.gratitudeMentions)")
+            print("🔎 ChatService: model returned gratitude_mentions= \(modelCount), heuristic found gratitude_mentions= \(heuristicCount) → final = \(finalCount)")
+//            print("🔎 ChatService: model returned gratitude_mentions=\(mapped.gratitudeMentions)")
             completion(mapped)
         }.resume()
     }
+    
+    // MARK: Updated Gratitude Counter
+    
+    /// Extracts likely USER-only utterances from a transcript where lines may be prefixed,
+    /// and counts gratitude-related expressions with a small negation guard.
+    private func fallbackGratitudeCount(in transcript: String) -> Int {
+        // 1) Pull out user-only lines
+        let lines = transcript
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { line in
+                let lower = line.lowercased()
+                // Drop assistant/bot lines outright
+                if lower.hasPrefix("assistant:") || lower.hasPrefix("bot:") || lower.hasPrefix("heyfriend:") {
+                    return false
+                }
+                return true
+            }
+            .map { line -> String in
+                // Strip common user prefixes like "You:", "User:", "Me:"
+                if let idx = line.firstIndex(of: ":"), line[..<idx].lowercased().trimmingCharacters(in: .whitespaces) ~= "you|user|me" {
+                    return String(line[line.index(after: idx)...]).trimmingCharacters(in: .whitespaces)
+                }
+                return line
+            }
+
+        // 2) Patterns to count (occurrence-based, not just per-line)
+        let patterns: [NSRegularExpression] = [
+            try! NSRegularExpression(pattern: #"\bi'?m\s+grateful\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bgrateful\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bgratitude\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bthank\s+you\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bthanks\b"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bthankful\b"#, options: [.caseInsensitive]),   // 👈 added
+            try! NSRegularExpression(pattern: #"\bappreciate(?:\b|\s)"#, options: [.caseInsensitive]),
+            try! NSRegularExpression(pattern: #"\bappreciation\b"#, options: [.caseInsensitive])
+        ]
+        // Very light negation guard in the same line
+        let negation = try! NSRegularExpression(pattern: #"\b(?:not|nothing|don'?t|didn'?t|isn'?t|ain'?t)\b"#, options: [.caseInsensitive])
+
+        var total = 0
+        for raw in lines {
+            let s = raw.lowercased()
+            let range = NSRange(s.startIndex..<s.endIndex, in: s)
+
+            // If a negator appears in the same line, discount one hit
+            let negated = negation.firstMatch(in: s, options: [], range: range) != nil
+
+            var count = 0
+            for re in patterns {
+                count += re.numberOfMatches(in: s, options: [], range: range)
+            }
+            if negated, count > 0 { count -= 1 }
+
+            total += max(0, count)
+        }
+        return total
+    }
+
+
     
     // MARK: - Language Patterns Cache Response
     
