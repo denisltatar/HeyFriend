@@ -80,6 +80,8 @@ final class TextToSpeechService: NSObject, AVSpeechSynthesizerDelegate, AVAudioP
                 // Build request
                 struct Body: Encodable {
                     let model: String = "gpt-4o-mini-tts"
+                    // New cheaper model
+//                    let model= "gpt-realtime-mini"
 //                    let model: String = "gpt-4o-mini-tts-1"
 //                    let model: String = "gpt-4o-tts"
                     let voice: String = "echo" // change to "verse", etc. if you like

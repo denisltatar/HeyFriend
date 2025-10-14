@@ -16,7 +16,7 @@ struct CountdownBanner: View {
             Image(systemName: "timer")
                 .font(.headline.weight(.semibold))
             if secondsRemaining > 60 {
-                Text("You’ve got ~5 minutes left in this session.")
+                Text("You’ve got 5 minutes left in this session.")
                     .font(.subheadline).fontWeight(.semibold)
             } else {
                 Text("Session ends in \(secondsRemaining)s")

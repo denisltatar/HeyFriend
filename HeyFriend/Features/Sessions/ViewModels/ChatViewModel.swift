@@ -181,15 +181,17 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                 if EntitlementSync.shared.isPlus {
                     
                     // MARK: - Test vr. Prod Timmer
-                    // 30 minutes, w/ 5 minute warning
-                    let maxSeconds = 30 * 60        // TEST: use 30*60 for production
-                    let warnThreshold = 300
+                    // 25 minutes, w/ 15 minute warning
+                    let maxSeconds = 20 * 60        // Max amount to chat = 20 minutes
+//                    let warnThreshold = 300
+                    let warnThreshold = 15 * 60     // Show warning at 15 minutes
                     self.timerService = SessionTimerService(
                         startedAt: startedLocal,
                         maxDuration: TimeInterval(maxSeconds),
                         warnAtSeconds: TimeInterval(warnThreshold)
                     )
                     
+                    // Testing
                     // 60 seconds, w/ 10 seconds warning
 //                    let maxSeconds = 60
 //                    let warnThreshold = 10
@@ -205,8 +207,8 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                             guard let self else { return }
 
                             // ⏰ One-time warning + auto-dismiss
-                            // TEST: warn at 10s remaining; PROD: change 10 -> 300 (5 minutes)
-                            let warnThreshold = 10  // ← change to 300 in production
+                            // TEST: warn at 5 mins remaining; PROD: change to 15 * 60 (15 minutes)
+                            let warnThreshold = 15 * 60  // warning
                             if !self.hasIssuedWarning, Int(state.remaining) <= warnThreshold {
                                 self.hasIssuedWarning = true
                                 self.showTMinusFiveBanner = true

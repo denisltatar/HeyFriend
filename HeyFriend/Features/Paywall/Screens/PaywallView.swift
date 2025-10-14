@@ -372,7 +372,7 @@ private struct FeatureList: View {
                 .font(.title3.weight(.semibold))
 
             VStack(spacing: 10) {
-                BulletRow(icon: "timer", title: "Unlimited sessions up to 45 min per session")
+                BulletRow(icon: "timer", title: "Unlimited sessions up to 20 min per session")
                 BulletRow(icon: "chart.line.uptrend.xyaxis", title: "Richer insights over time")
                 BulletRow(icon: "brain.head.profile", title: "Emotion & personality analysis")
                 BulletRow(icon: "folder.badge.person.crop", title: "Long-term memory updates")
