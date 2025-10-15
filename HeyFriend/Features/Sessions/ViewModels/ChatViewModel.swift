@@ -183,7 +183,6 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                     // MARK: - Test vr. Prod Timmer
                     // 25 minutes, w/ 15 minute warning
                     let maxSeconds = 20 * 60        // Max amount to chat = 20 minutes
-//                    let warnThreshold = 300
                     let warnThreshold = 15 * 60     // Show warning at 15 minutes
                     self.timerService = SessionTimerService(
                         startedAt: startedLocal,

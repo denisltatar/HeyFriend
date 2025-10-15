@@ -1,0 +1,43 @@
+{
+  "configurations" : [
+    {
+      "id" : "E884B4CA-1AB2-4B95-8445-77C1AD2B0D20",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "environmentVariableEntries" : [
+      {
+        "key" : "OPENAI_API_KEY",
+        "value" : "TEST_KEY"
+      }
+    ],
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:HeyFriend.xcodeproj",
+      "identifier" : "7E4617662E46925F00EFAA01",
+      "name" : "HeyFriend"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:HeyFriend.xcodeproj",
+        "identifier" : "7E4617762E46926100EFAA01",
+        "name" : "HeyFriendTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:HeyFriend.xcodeproj",
+        "identifier" : "7E4617802E46926100EFAA01",
+        "name" : "HeyFriendUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -56,6 +56,7 @@
 		7EA134142E564804004109B9 /* SummaryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA134132E564804004109B9 /* SummaryProvider.swift */; };
 		7EB0A7AD2E6F67F80090AD40 /* EntitlementsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB0A7AC2E6F67F80090AD40 /* EntitlementsViewModel.swift */; };
 		7EB0A7B12E6F69830090AD40 /* FreeSessionsPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB0A7B02E6F69830090AD40 /* FreeSessionsPill.swift */; };
+		7EDCEF952E9EFD5A008B8C8B /* ChatServiceSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDCEF942E9EFD5A008B8C8B /* ChatServiceSummaryTests.swift */; };
 		7EDF910C2E622CBA00F3A62F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
@@ -126,6 +127,8 @@
 		7EA134132E564804004109B9 /* SummaryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryProvider.swift; sourceTree = "<group>"; };
 		7EB0A7AC2E6F67F80090AD40 /* EntitlementsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementsViewModel.swift; sourceTree = "<group>"; };
 		7EB0A7B02E6F69830090AD40 /* FreeSessionsPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreeSessionsPill.swift; sourceTree = "<group>"; };
+		7EDCEF942E9EFD5A008B8C8B /* ChatServiceSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatServiceSummaryTests.swift; sourceTree = "<group>"; };
+		7EDCEF962E9F0AE2008B8C8B /* HeyFriend.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = HeyFriend.xctestplan; sourceTree = "<group>"; };
 		7EDF910B2E622CBA00F3A62F /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -338,6 +341,7 @@
 		7E46175E2E46925F00EFAA01 = {
 			isa = PBXGroup;
 			children = (
+				7EDCEF962E9F0AE2008B8C8B /* HeyFriend.xctestplan */,
 				7E4617692E46925F00EFAA01 /* HeyFriend */,
 				7E46177A2E46926100EFAA01 /* HeyFriendTests */,
 				7E4617842E46926200EFAA01 /* HeyFriendUITests */,
@@ -384,6 +388,7 @@
 			isa = PBXGroup;
 			children = (
 				7E46177B2E46926100EFAA01 /* HeyFriendTests.swift */,
+				7EDCEF942E9EFD5A008B8C8B /* ChatServiceSummaryTests.swift */,
 			);
 			path = HeyFriendTests;
 			sourceTree = "<group>";
@@ -659,6 +664,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7EDCEF952E9EFD5A008B8C8B /* ChatServiceSummaryTests.swift in Sources */,
 				7E46177C2E46926100EFAA01 /* HeyFriendTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

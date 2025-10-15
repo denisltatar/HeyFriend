@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 
 struct CountdownBanner: View {
-    let secondsRemaining: Int   // pass 300 at 25-min mark, live seconds <=60 later
+    let secondsRemaining: Int
 
     var body: some View {
         HStack(spacing: 10) {
