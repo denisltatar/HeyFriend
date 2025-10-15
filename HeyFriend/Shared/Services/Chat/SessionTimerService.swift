@@ -19,7 +19,7 @@ final class SessionTimerService {
 
     private let startDate: Date
     private let maxDuration: TimeInterval
-    private let warnAtSeconds: TimeInterval
+    private let warnAtElapsed: TimeInterval
 
     private var displayLink: CADisplayLink?
     private let subject = CurrentValueSubject<State, Never>(
@@ -30,10 +30,10 @@ final class SessionTimerService {
 
     init(startedAt: Date,
          maxDuration: TimeInterval = 20 * 60,
-         warnAtSeconds: TimeInterval = 15 * 60) {
+         warnAtElapsed: TimeInterval = 15 * 60) {
         self.startDate = startedAt
         self.maxDuration = max(0, maxDuration)
-        self.warnAtSeconds = max(0, warnAtSeconds)
+        self.warnAtElapsed = max(0, warnAtElapsed)
         tick()
         start()
     }
@@ -59,7 +59,7 @@ final class SessionTimerService {
         let now = Date()
         let elapsed = max(0, now.timeIntervalSince(startDate))
         let remaining = max(0, maxDuration - elapsed)
-        let warned = remaining <= warnAtSeconds
+        let warned = remaining <= warnAtElapsed
         let over = remaining <= 0
         subject.send(.init(elapsed: elapsed, remaining: remaining, hasWarned: warned, isOverLimit: over))
     }
