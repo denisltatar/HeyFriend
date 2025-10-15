@@ -164,6 +164,13 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                 await MainActor.run {
                     self.currentSessionId = sid
                     self.transcriptLines.removeAll()
+
+                    // ✅ make these main-thread publishes
+                    self.hasIssuedWarning = false
+                    self.showTMinusFiveBanner = false
+                    self.showFinalCountdown = false
+                    self.finalCountdownSeconds = 0
+                    self.sessionEndedByTimeLimit = false
                 }
                 
                 // Reset time-limit UI/flags at the start of each session
@@ -178,16 +185,19 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                 let startedLocal = Date()
                 self.sessionStartedAtLocal = startedLocal
 
-                if EntitlementSync.shared.isPlus {
+                let isPlus = await MainActor.run { EntitlementSync.shared.isPlus }
+                if isPlus {
                     
                     // MARK: - Test vr. Prod Timmer
-                    // 25 minutes, w/ 15 minute warning
+                    // 20 minutes, w/ 15 minute warning
                     let maxSeconds = 20 * 60        // Max amount to chat = 20 minutes
-                    let warnThreshold = 15 * 60     // Show warning at 15 minutes
+                    let warnAtElapsed = 15 * 60     // Show warning at 15 minutes
+                    let warnAtRemaining = maxSeconds - warnAtElapsed // = 5*60
+                    
                     self.timerService = SessionTimerService(
                         startedAt: startedLocal,
                         maxDuration: TimeInterval(maxSeconds),
-                        warnAtSeconds: TimeInterval(warnThreshold)
+                        warnAtElapsed: TimeInterval(warnAtRemaining)
                     )
                     
                     // Testing
@@ -205,23 +215,22 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                         .sink { [weak self] state in
                             guard let self else { return }
 
-                            // ⏰ One-time warning + auto-dismiss
-                            // TEST: warn at 5 mins remaining; PROD: change to 15 * 60 (15 minutes)
-                            let warnThreshold = 15 * 60  // warning
-                            if !self.hasIssuedWarning, Int(state.remaining) <= warnThreshold {
+                            // Show the 5-minute banner exactly once, when service says “warned”
+                            if !self.hasIssuedWarning, state.hasWarned {
                                 self.hasIssuedWarning = true
                                 self.showTMinusFiveBanner = true
 
-                                // (Optional) persist a "warningIssuedAt" in Firestore if you want
                                 if let uid = AuthService.shared.userId, let sid = self.currentSessionId {
-                                    Task { await FirestoreService.shared.markSessionWarning(uid: uid, sid: sid) }
+                                    Task.detached { await FirestoreService.shared.markSessionWarning(uid: uid, sid: sid) }
                                 }
                             }
 
-                            // Keep banner visible and keep updating the countdown until 0
+                            // Always track remaining; cap the banner’s countdown to 5 minutes
                             let rem = Int(ceil(state.remaining))
-                            self.finalCountdownSeconds = max(0, rem) // always update
-                            self.showFinalCountdown = rem <= 60      // switch to numeric countdown in last minute
+                            self.finalCountdownSeconds = self.showTMinusFiveBanner ? min(rem, 5 * 60) : rem
+
+                            // Swap to “last-minute numeric” when <= 60s
+                            self.showFinalCountdown = rem <= 60
 
                             // Hard stop
                             if state.isOverLimit {
@@ -229,6 +238,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                             }
                         }
                         .store(in: &self.cancellables)
+
 
                     // Keep Firestore in sync with the cap (use 1800 for prod)
                     if let uid = AuthService.shared.userId, let sid = self.currentSessionId {
