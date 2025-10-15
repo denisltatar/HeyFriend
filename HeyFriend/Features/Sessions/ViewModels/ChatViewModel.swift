@@ -78,8 +78,14 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var sessionStartedAtLocal: Date?
     
+    // Single-flight send + duplicate commit guard
+    private var isAwaitingModelReply = false
+    private var lastCommittedText: String = ""
+    private var lastCommitTime: CFAbsoluteTime = 0
+    private let commitDebounceWindow: CFTimeInterval = 1.2 // seconds
 
-
+    
+    
     
     override init() {
         super.init()
@@ -316,6 +322,9 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
                     self.transcribedText = text
                 }
                 if result.isFinal {
+                    // Avoid racing with the silence timer commit
+                    self.silenceTimer?.invalidate()
+                    self.silenceTimer = nil
                     self.commitUtteranceAndQuery()
                 }
             }
@@ -401,27 +410,48 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         let userTurn = utteranceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !userTurn.isEmpty else { return }
 
+        let now = CFAbsoluteTimeGetCurrent()
+
+        // ⛔️ If we’re already waiting on a reply, don’t send again
+        guard !isAwaitingModelReply else { return }
+
+        // ⛔️ If we just committed the same text very recently, skip (double-fire from isFinal + silence)
+        if userTurn == lastCommittedText, (now - lastCommitTime) < commitDebounceWindow {
+            return
+        }
+
+        // Mark as in-flight and remember what we sent
+        isAwaitingModelReply = true
+        lastCommittedText = userTurn
+        lastCommitTime = now
+
         // Stop current recognition to avoid cross-talk with TTS
         stopRecognition(.forTTS)
 
-         // 🔽 NEW: record the user turn, persist transcript
+        // 🔽 Record + persist user turn
         appendAndPersist(role: "You", text: userTurn)
-        
+
         // User is waiting for a reply
         isWaitingForReply = true
 
         ChatService.shared.sendMessage(userTurn) { reply in
             DispatchQueue.main.async {
-                // ⛔️ If session ended by time limit, ignore late replies completely
-                guard !self.sessionEndedByTimeLimit else { return }
-                
-                let bot = (reply ?? "Sorry, I didn’t catch that. Can you try again?").trimmingCharacters(in: .whitespacesAndNewlines)
+                // ⛔️ Ignore if session ended by time limit
+                guard !self.sessionEndedByTimeLimit else {
+                    self.isAwaitingModelReply = false
+                    return
+                }
+
+                let bot = (reply ?? "Sorry, I didn’t catch that. Can you try again?")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 self.aiResponse = bot
-                // 🔽 NEW: record assistant turn, persist transcript
                 self.appendAndPersist(role: "HeyFriend", text: bot)
 
+                // Free the single-flight gate as soon as we hand off to TTS
+                self.isAwaitingModelReply = false
+
                 TextToSpeechService.shared.speak(bot)
-                // After TTS finishes, onTTSFinish() will bring us back to listening
+                // onTTSFinish() resumes recognition
             }
         }
 
@@ -429,6 +459,7 @@ class ChatViewModel: NSObject, ObservableObject, SFSpeechRecognizerDelegate {
         utteranceBuffer = ""
         lastVoiceTime = Date().timeIntervalSince1970
     }
+
     
     // Send a pre-selected user turn (from SessionsHomeView) as if the user spoke it.
     func seedAndQuery(_ userTurn: String) {
