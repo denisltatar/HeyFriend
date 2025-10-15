@@ -19,7 +19,7 @@ final class SessionTimerService {
 
     private let startDate: Date
     private let maxDuration: TimeInterval
-    private let warnAtSeconds: TimeInterval   // e.g. 300s in prod, 10s in tests
+    private let warnAtSeconds: TimeInterval
 
     private var displayLink: CADisplayLink?
     private let subject = CurrentValueSubject<State, Never>(
@@ -29,8 +29,8 @@ final class SessionTimerService {
     var publisher: AnyPublisher<State, Never> { subject.eraseToAnyPublisher() }
 
     init(startedAt: Date,
-         maxDuration: TimeInterval = 30 * 60,
-         warnAtSeconds: TimeInterval = 300) {
+         maxDuration: TimeInterval = 20 * 60,
+         warnAtSeconds: TimeInterval = 15 * 60) {
         self.startDate = startedAt
         self.maxDuration = max(0, maxDuration)
         self.warnAtSeconds = max(0, warnAtSeconds)
