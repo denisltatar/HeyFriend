@@ -55,27 +55,15 @@ final class EntitlementSync {
     }
     
     /// Manually trigger Apple sync (for your "Restore Purchases" button).
-    func restore() async {
-        do {
-            try await AppStore.sync()
-        } catch {
-            print("Restore failed: \(error)")
-        }
+    func restore() async throws {
+        try await AppStore.sync()
         await refresh()
     }
 
+
     /// Re-check current entitlements and (safely) mirror to local flag + Firestore.
     func refresh() async {
-        // optional UX tweak
-        guard Auth.auth().currentUser != nil else {
-            print("refresh(): skipped (no Firebase user)")
-            return
-        }
-        
-        // 0) If we truly cannot check yet (e.g., no receipt state),
-        // we still compute from SK2 API below; no Firestore writes until UID exists.
-
-        // 1) Scan current entitlements for active Plus
+        // 1) Always compute local entitlement state (even if no Firebase user yet)
         var activePlus: Transaction?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let tx) = result else { continue }
@@ -88,7 +76,7 @@ final class EntitlementSync {
             break
         }
 
-        // 2) Defensive check (latest) — covers non-consumable lifetime or edge cases
+        // 2) Defensive latest check
         if activePlus == nil {
             for id in plusIDs {
                 if let latest = await Transaction.latest(for: id),
@@ -105,9 +93,8 @@ final class EntitlementSync {
         // 3) Update local UI flag immediately (fast UI)
         hasPlusFlag = (activePlus != nil)
 
-        // 4) Mirror to Firestore ONLY if we have a uid
+        // 4) Only mirror to Firestore if we have a uid
         guard let uid = (AuthService.shared.userId ?? Auth.auth().currentUser?.uid) else {
-            // No UID yet — don't overwrite server state to free.
             return
         }
 

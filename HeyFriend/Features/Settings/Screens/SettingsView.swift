@@ -82,16 +82,6 @@ struct SettingsView: View {
                 Section("Subscription") {
                     if entitlements.isPlus {
                         Button {
-                            if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
-                                openURL(url)
-                            }
-                        } label: {
-                            Label("Manage Plus Subscription", systemImage: "sparkles")
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                        
-                        Button {
                             showPaywall = true   // reuse your existing sheet
                         } label: {
                             Label("View your plan", systemImage: "person.badge.shield.checkmark")

@@ -19,7 +19,19 @@ import StoreKit
 // MARK: - Config
 private enum IAP {
     static let monthlyID = "com.heyfriend.plus.monthly"
-    static let yearlyID  = "com.heyfriend.plus.yearly" // remove if you didn't create it
+    static let yearlyID  = "com.heyfriend.plus.yearly"
+    
+    // StoreKit subscription group IDs
+    static let subscriptionGroupIDLocal = "298AEF87"   // from Storekit-Local.storekit
+    static let subscriptionGroupIDASC   = "21776835"   // from App Store Connect (numeric)
+    
+    static var subscriptionGroupID: String {
+        #if DEBUG
+        return subscriptionGroupIDLocal
+        #else
+        return subscriptionGroupIDASC
+        #endif
+    }
 }
 
 private enum Brand {
@@ -50,11 +62,28 @@ struct PaywallView: View {
     
     // Entitlement VM
     @StateObject private var entitlementsVM = EntitlementsViewModel()
+    
+    // Helpful for alert when unsubscribing
+    @State private var restoreMessage: String? = nil
+    @State private var showingRestoreAlert = false
+    @State private var isRestoring = false
+    
+    @State private var showingManageSheet = false
+
+    @State private var willAutoRenew: Bool = true
+//    var foundWillAutoRenew = true
+//    
+//    var foundActive = false
+//    var foundProductId: String? = nil
+//    var foundExpiresAt: Date? = nil
+//    var foundWillAutoRenew = true
+
+
 
     var body: some View {
         ZStack {
             ScrollView {
-                if hasPlus {
+                if entitlementsVM.isPlus {
                     // MARK: - Subscribed UI
                     VStack(spacing: 20) {
                         // Header
@@ -112,7 +141,11 @@ struct PaywallView: View {
                         // Actions
                         VStack(spacing: 10) {
                             Button {
-                                openManageSubscriptions()
+                                if #available(iOS 17.0, *) {
+                                    showingManageSheet = true
+                                } else {
+                                    openManageSubscriptions()
+                                }
                             } label: {
                                 Text("Manage Subscription")
                                     .frame(maxWidth: .infinity)
@@ -156,11 +189,12 @@ struct PaywallView: View {
                             monthlyPrice: monthlyProduct?.displayPrice
                         )
                         CTASection(
-                            selectedPlan: selectedPlan,
-                            isPurchasing: isPurchasing,
-                            errorText: errorText,
-                            purchaseAction: { plan in Task { await purchaseSelected(plan) } },
-                            restoreAction: { Task { await restorePurchases() } }
+                          selectedPlan: selectedPlan,
+                          isPurchasing: isPurchasing,
+                          isRestoring: isRestoring,
+                          errorText: errorText,
+                          purchaseAction: { plan in Task { await purchaseSelected(plan) } },
+                          restoreAction: { Task { await restorePurchases() } }
                         )
                         .padding(.top, 6)
                         LegalLinks()
@@ -176,13 +210,29 @@ struct PaywallView: View {
             // Obtaining entitlements to update paywall/settings
             entitlementsVM.start()
             await loadProducts()
-            await observeTransactionUpdates()
-            if hasPlus {
+            
+            // ✅ Always re-check StoreKit and set hasPlus correctly
+            if entitlementsVM.isPlus {
                 await refreshPlusStatus()
             }
         }
+        .applyManageSubscriptionsSheet(isPresented: $showingManageSheet, groupID: IAP.subscriptionGroupID)
+
+
+        .alert("Restore Purchases", isPresented: $showingRestoreAlert) {
+                Button("OK", role: .cancel) {}
+        } message: {
+            Text(restoreMessage ?? "")
+        }
         .onDisappear {
             entitlementsVM.stop()
+        }
+        .onChange(of: showingManageSheet) { isShowing in
+            if !isShowing {
+                Task {
+                    await refreshPlusStatus()
+                }
+            }
         }
         .onChange(of: hasPlus) { new in
             if new { dismiss() }
@@ -191,21 +241,43 @@ struct PaywallView: View {
 
     // MARK: - StoreKit helpers
 
+//    @MainActor
+//    private func loadProducts() async {
+//        errorText = nil
+//        do {
+//            let ids: [String] = [IAP.monthlyID, IAP.yearlyID]
+//            print("🔎 Loading IAP products:", ids)
+//
+//            let fetched = try await Product.products(for: ids)
+//
+//            print("✅ Fetched:", fetched.map { "\($0.id) \($0.displayPrice)" })
+//
+//            // Sort for stable UI
+//            self.products = fetched.sorted { $0.displayName < $1.displayName }
+//
+//            if fetched.isEmpty {
+//                self.errorText = "No products returned. Check App Store Connect + build environment."
+//            }
+//        } catch {
+//            print("❌ loadProducts error:", error)
+//            self.errorText = "Failed to load products: \(error.localizedDescription)"
+//        }
+//    }
+    
     private func loadProducts() async {
         do {
-            print("IDs:", [IAP.monthlyID, IAP.yearlyID])
-            let fetched = try await Product.products(for: [IAP.monthlyID, IAP.yearlyID])
-            print("Fetched count:", fetched.count)
-            for p in fetched { print("→", p.id, p.displayName, p.displayPrice) }
-            
-            var ids: Set<String> = [IAP.monthlyID]
-            if !IAP.yearlyID.isEmpty { ids.insert(IAP.yearlyID) }
-            products = try await Product.products(for: ids)
-                .sorted { $0.displayName < $1.displayName }
+            let fetched = try await Product.products(for: [
+                IAP.monthlyID,
+                IAP.yearlyID
+            ])
+            print("Fetched products:", fetched.map { $0.id })
+            products = fetched
         } catch {
-            errorText = "Failed to load products: \(error.localizedDescription)"
+            print("StoreKit error:", error)
+            errorText = error.localizedDescription
         }
     }
+
 
     private func purchaseSelected(_ plan: String) async {
         errorText = nil
@@ -242,63 +314,93 @@ struct PaywallView: View {
     }
 
     private func restorePurchases() async {
-        errorText = nil
+        guard !isRestoring else { return }
+
+        await MainActor.run {
+            isRestoring = true
+            restoreMessage = nil
+            showingRestoreAlert = false
+            errorText = nil
+        }
+        defer {
+            Task { @MainActor in
+                isRestoring = false
+            }
+        }
+
+        // Light haptic to feel “real”
+        await MainActor.run {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+
         do {
-            try await AppStore.sync()
-            // Write free plan if no active plan is found
-            var foundActive = false
-            // Re-scan current entitlements
-            for await result in Transaction.currentEntitlements {
-                if let tx = try? checkVerified(result) {
-                    await applyEntitlementIfActive(tx)
-                    if hasPlus { foundActive = true }
+            // Single source of truth
+            try await EntitlementSync.shared.restore()
+
+            // Update the nicer Plus UI fields (plan, expiry, willAutoRenew)
+            await refreshPlusStatus()
+
+            let nowHasPlus = UserDefaults.standard.bool(forKey: "hf.hasPlus")
+
+            await MainActor.run {
+                restoreMessage = nowHasPlus
+                    ? "Subscription restored ✅"
+                    : "No active subscription found for this Apple ID.\n\nIf purchased on a different Apple ID, sign into that account and try again."
+                showingRestoreAlert = true
+
+                if nowHasPlus {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                } else {
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
                 }
             }
-            if !foundActive, let uid = AuthService.shared.userId {
-                try? await FirestoreService.shared.setFree(uid: uid)
-            }
         } catch {
-            errorText = "Restore failed: \(error.localizedDescription)"
+            await MainActor.run {
+                restoreMessage = "Restore failed. Please try again.\n\n\(error.localizedDescription)"
+                showingRestoreAlert = true
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+            }
         }
     }
+
+
+
 
     private func observeTransactionUpdates() async {
         // Keep local entitlement in sync with any changes (upgrades, renewals, refunds)
         for await result in Transaction.updates {
             if let tx = try? checkVerified(result) {
+                // If active, apply it; otherwise refresh will clear hasPlus
                 await applyEntitlementIfActive(tx)
                 await tx.finish()
             }
+            await refreshPlusStatus()
         }
     }
 
     private func applyEntitlementIfActive(_ tx: StoreKit.Transaction) async {
-        guard [.autoRenewable].contains(tx.productType) else { return }
-        // Make sure this transaction is for one of our Plus products and still valid
+        guard tx.productType == .autoRenewable else { return }
+
         let isPlusProduct = (tx.productID == IAP.monthlyID) || (tx.productID == IAP.yearlyID)
-        let isValid = tx.productType == .autoRenewable &&
-                      isPlusProduct &&
-                      tx.revocationDate == nil &&
+        guard isPlusProduct else { return }
+
+        let isValid = tx.revocationDate == nil &&
                       (tx.expirationDate ?? .distantFuture) > Date()
 
-        if isValid {
-            hasPlus = true
-            if let uid = AuthService.shared.userId {
-                let original = tx.originalID ?? tx.id
-                try? await FirestoreService.shared.setPlus(
-                    uid: uid,
-                    productId: tx.productID,
-                    originalTransactionId: String(original),
-                    expiresAt: tx.expirationDate
-                )
-            }
-        } else {
-            hasPlus = false
-            if let uid = AuthService.shared.userId {
-                try? await FirestoreService.shared.setFree(uid: uid)
-            }
+        guard isValid else { return }
+
+        hasPlus = true
+        if let uid = AuthService.shared.userId {
+            let original = tx.originalID ?? tx.id
+            try? await FirestoreService.shared.setPlus(
+                uid: uid,
+                productId: tx.productID,
+                originalTransactionId: String(original),
+                expiresAt: tx.expirationDate
+            )
         }
     }
+
 
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
@@ -313,19 +415,78 @@ struct PaywallView: View {
     // MARK: - Plus Status (for nicer "You're on Plus" UI)
 
     private func refreshPlusStatus() async {
-        // Scan active entitlements and capture our Plus line item
+        // 1) Find the active Plus entitlement (monthly OR yearly) with the latest expiration
+        var bestTx: StoreKit.Transaction? = nil
+
         for await result in Transaction.currentEntitlements {
-            if let tx = try? checkVerified(result) {
-                guard tx.productType == .autoRenewable else { continue }
-                let isPlus = (tx.productID == IAP.monthlyID) || (tx.productID == IAP.yearlyID)
-                guard isPlus, tx.revocationDate == nil, (tx.expirationDate ?? .distantFuture) > Date() else { continue }
-                await MainActor.run {
-                    self.plusProductId = tx.productID
-                    self.plusExpiresAt = tx.expirationDate
-                }
+            guard let tx = try? checkVerified(result) else { continue }
+            guard tx.productType == .autoRenewable else { continue }
+            guard tx.productID == IAP.monthlyID || tx.productID == IAP.yearlyID else { continue }
+
+            let isValid = tx.revocationDate == nil &&
+                          (tx.expirationDate ?? .distantFuture) > Date()
+            guard isValid else { continue }
+
+            if let current = bestTx {
+                let curExp = current.expirationDate ?? .distantFuture
+                let newExp = tx.expirationDate ?? .distantFuture
+                if newExp > curExp { bestTx = tx }
+            } else {
+                bestTx = tx
+            }
+        }
+
+        // 2) Derive UI state from the best active entitlement
+        let foundActive = (bestTx != nil)
+        let foundProductId = bestTx?.productID
+        let foundExpiresAt = bestTx?.expirationDate
+
+        // 3) willAutoRenew: pull from Product.subscription.status (Transaction has no renewalInfo)
+        var foundWillAutoRenew = true
+        if let pid = foundProductId {
+            foundWillAutoRenew = await fetchWillAutoRenew(for: pid)
+        }
+
+        // 4) Apply to UI on main thread
+        await MainActor.run {
+            hasPlus = foundActive
+            plusProductId = foundProductId
+            plusExpiresAt = foundExpiresAt
+            willAutoRenew = foundWillAutoRenew
+
+            if !foundActive {
+                plusProductId = nil
+                plusExpiresAt = nil
+                willAutoRenew = true
             }
         }
     }
+
+
+    
+    private func fetchWillAutoRenew(for productID: String) async -> Bool {
+        guard let product = products.first(where: { $0.id == productID }) else {
+            return true // default fallback
+        }
+
+        do {
+            guard let statuses = try await product.subscription?.status else {
+                return true
+            }
+
+            // pick the best status (usually the “current” one)
+            if let status = statuses.first {
+                if case .verified(let renewalInfo) = status.renewalInfo {
+                    return renewalInfo.willAutoRenew
+                }
+            }
+        } catch {
+            // ignore and fall back
+        }
+
+        return true
+    }
+
 
     private var resolvedProductId: String? {
         // Prefer live StoreKit; fall back to Firestore VM
@@ -346,11 +507,17 @@ struct PaywallView: View {
     }
 
     private var plusRenewalLabel: String {
-        if let exp = resolvedExpiresAt {
-            return "Renews on \(exp.formatted(date: .long, time: .omitted))"
+        guard let exp = resolvedExpiresAt else {
+            return "Auto-renewing"
         }
-        return "Auto-renewing"
+
+        if willAutoRenew {
+            return "Renews on \(exp.formatted(date: .long, time: .omitted))"
+        } else {
+            return "Cancelled — access until \(exp.formatted(date: .long, time: .omitted))"
+        }
     }
+
 
     private func openManageSubscriptions() {
         if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
@@ -362,6 +529,18 @@ struct PaywallView: View {
 
     
 }
+
+private extension View {
+    @ViewBuilder
+    func applyManageSubscriptionsSheet(isPresented: Binding<Bool>, groupID: String) -> some View {
+        if #available(iOS 17.0, *) {
+            self.manageSubscriptionsSheet(isPresented: isPresented, subscriptionGroupID: groupID)
+        } else {
+            self
+        }
+    }
+}
+
 
 // MARK: - Components
 
@@ -421,7 +600,7 @@ private struct PricingPicker: View {
                 PricingOption(
                     title: "Yearly",
                     subtitle: "Best value • Save 50%",
-                    price: yearlyPrice.map { "\($0) / year (~$4.99/mo)" } ?? "—",
+                    price: yearlyPrice.map { "\($0) / year (~$4.99/mo)" } ?? "Loading…",
                     isSelected: selected == "yearly"
                 )
                 .onTapGesture { selected = "yearly" }
@@ -429,7 +608,7 @@ private struct PricingPicker: View {
                 PricingOption(
                     title: "Monthly",
                     subtitle: "Cancel anytime",
-                    price: monthlyPrice.map { "\($0) / month" } ?? "—",
+                    price: monthlyPrice.map { "\($0) / month" } ?? "Loading…",
                     isSelected: selected == "monthly"
                 )
                 .onTapGesture { selected = "monthly" }
@@ -472,6 +651,7 @@ private struct PricingOption: View {
 private struct CTASection: View {
     let selectedPlan: String
     let isPurchasing: Bool
+    let isRestoring: Bool
     let errorText: String?
     let purchaseAction: (_ plan: String) -> Void
     let restoreAction: () -> Void
@@ -493,12 +673,23 @@ private struct CTASection: View {
                 }
             }
             .buttonStyle(PrimaryGradientButtonStyle())
-            .controlSize(.regular)
-            .disabled(isPurchasing)
+            .disabled(isPurchasing || isRestoring)
 
-            Button("Restore Purchases", action: restoreAction)
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+            Button {
+                restoreAction()
+            } label: {
+                HStack(spacing: 8) {
+                    if isRestoring {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text(isRestoring ? "Restoring…" : "Restore Subscription")
+                }
+                .font(.callout.weight(.semibold))
+                .padding(.top, 6)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .disabled(isPurchasing || isRestoring)
 
             if let errorText {
                 Text(errorText)
@@ -511,10 +702,11 @@ private struct CTASection: View {
     }
 }
 
+
 private struct LegalLinks: View {
     var body: some View {
         VStack(spacing: 6) {
-            Text("Recurring billing. Cancel anytime in Settings.")
+            Text("Restores paid subs only. Cancel anytime in Settings.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             HStack(spacing: 12) {
