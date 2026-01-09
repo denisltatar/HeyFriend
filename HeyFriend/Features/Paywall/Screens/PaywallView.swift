@@ -600,7 +600,7 @@ private struct PricingPicker: View {
                 PricingOption(
                     title: "Yearly",
                     subtitle: "Best value • Save 50%",
-                    price: yearlyPrice.map { "\($0) / year (~$4.99/mo)" } ?? "Loading…",
+                    price: yearlyPrice.map { "\($0) / year (~$2.99/mo)" } ?? "Loading…",
                     isSelected: selected == "yearly"
                 )
                 .onTapGesture { selected = "yearly" }
